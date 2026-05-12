@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LEVELS, type LevelId } from '@/db/types';
 import { useSettings, type AIProvider, type AIEndpoint, type LearnOrder, type ReviewAlgorithm } from '@/stores/settingsStore';
 import { db } from '@/db/schema';
@@ -107,14 +107,15 @@ export function Settings() {
   if (!loaded) return null;
 
   return (
-    <div className="space-y-12">
-      <header>
-        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 06 · preferences</div>
-        <h1 className="mt-2 font-display text-5xl font-black tracking-tight">设置</h1>
-      </header>
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_180px]">
+      <div className="space-y-12">
+        <header>
+          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 06 · preferences</div>
+          <h1 className="mt-2 font-display text-5xl font-black tracking-tight">设置</h1>
+        </header>
 
       {/* 学习偏好 */}
-      <Section title="学习偏好" sub="study preferences">
+      <Section id="study" title="学习偏好" sub="study preferences">
         <Field label="当前词库" hint="决定 / 学新词 / 抽取来源">
           <div className="flex flex-wrap gap-2">
             {LEVELS.filter((l) => (counts[l.id] ?? 0) > 0).map((l) => (
@@ -177,7 +178,7 @@ export function Settings() {
       </Section>
 
       {/* TTS */}
-      <Section title="朗读 · Text-to-Speech" sub="voice & speed">
+      <Section id="tts" title="朗读 · Text-to-Speech" sub="voice & speed">
         <Field label="发音" hint="Edge / Chrome 在 Windows 上会暴露高质量的 Online (Natural) 音色">
           <div className="space-y-2">
             <select
@@ -208,7 +209,7 @@ export function Settings() {
       </Section>
 
       {/* AI */}
-      <Section title="AI 助手 · LLM" sub="optional · openai / gemini compatible">
+      <Section id="ai" title="AI 助手 · LLM" sub="optional · openai / gemini compatible">
         <Field label="启用 AI 助手" hint="启用后可生成单词精讲、语法加题、错题解释等">
           <Toggle on={ai.enabled} onChange={(b) => setAI({ enabled: b })} />
         </Field>
@@ -346,7 +347,7 @@ export function Settings() {
       </Section>
 
       {/* 词库管理 */}
-      <Section title="词库管理" sub="dictionaries">
+      <Section id="library" title="词库管理" sub="dictionaries">
         <div className="grid gap-2">
           {LEVELS.map((l) => {
             const imported = (counts[l.id] ?? 0) > 0;
@@ -373,7 +374,7 @@ export function Settings() {
       </Section>
 
       {/* 数据备份 */}
-      <Section title="数据备份" sub="export · import">
+      <Section id="backup" title="数据备份" sub="export · import">
         {/* 导出 */}
         <Field label="导出备份" hint="不含 API Key（自动脱敏）">
           <div className="space-y-3">
@@ -462,13 +463,84 @@ export function Settings() {
           data lives in indexeddb · clearing site data will erase progress
         </p>
       </Section>
+      </div>
+      <aside className="hidden lg:block">
+        <SettingsTOC />
+      </aside>
     </div>
   );
 }
 
-function Section({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
+/* 设置页大纲 —— sticky 右侧，IntersectionObserver 自动高亮当前 section */
+const TOC_ITEMS: { id: string; label: string; en: string }[] = [
+  { id: 'study', label: '学习偏好', en: 'study' },
+  { id: 'tts', label: '朗读', en: 'tts' },
+  { id: 'ai', label: 'AI 助手', en: 'ai' },
+  { id: 'library', label: '词库管理', en: 'library' },
+  { id: 'backup', label: '数据备份', en: 'backup' },
+];
+
+function SettingsTOC() {
+  const [active, setActive] = useState<string>('study');
+
+  useEffect(() => {
+    const sections = TOC_ITEMS.map((i) => document.getElementById(i.id)).filter(Boolean) as HTMLElement[];
+    if (sections.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // 取最靠近顶部且在视野中的 section
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) {
+          const top = visible.reduce((a, b) => (a.boundingClientRect.top < b.boundingClientRect.top ? a : b));
+          setActive(top.target.id);
+        }
+      },
+      { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+    );
+    sections.forEach((s) => observer.observe(s));
+    return () => observer.disconnect();
+  }, []);
+
+  function jump(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
-    <section>
+    <nav className="sticky top-24 space-y-1 border-l border-paper3 pl-4">
+      <div className="mb-3 font-mono text-[9px] uppercase tracking-[0.3em] text-ink3">on this page</div>
+      {TOC_ITEMS.map((item) => {
+        const isActive = active === item.id;
+        return (
+          <button
+            key={item.id}
+            onClick={() => jump(item.id)}
+            className={cn(
+              'relative block w-full text-left transition-all',
+              'py-1 pl-3 font-display text-sm',
+              isActive ? 'font-bold text-ink' : 'text-ink3 hover:text-ink'
+            )}
+          >
+            {/* 当前小标 */}
+            <span
+              className={cn(
+                'absolute -left-[17px] top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full transition-all',
+                isActive ? 'bg-persimmon' : 'bg-transparent'
+              )}
+            />
+            <div>{item.label}</div>
+            <div className={cn('font-mono text-[9px] uppercase tracking-wider', isActive ? 'text-persimmon-700' : 'text-ink3/60')}>
+              {item.en}
+            </div>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function Section({ id, title, sub, children }: { id?: string; title: string; sub: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="scroll-mt-24">
       <header className="mb-5 flex items-baseline justify-between border-b border-paper3 pb-2">
         <h2 className="font-display text-2xl font-bold tracking-tight">{title}</h2>
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">{sub}</span>

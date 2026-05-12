@@ -7,6 +7,7 @@
     color-scheme: light;
     --paper-grain-opacity: 0.5;
   }
+  html { scroll-behavior: smooth; }
   html, body, #root { height: 100%; }
   body {
     font-family: 'DM Sans', system-ui, sans-serif;
@@ -140,6 +141,12 @@
     @apply absolute left-0 top-0 h-full rounded-full bg-ink transition-all duration-500;
   }
 
+  /* 键帽 —— 模拟键盘按键 */
+  .kbd {
+    @apply inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-paper3 bg-paper px-1.5 font-mono text-[11px] font-semibold text-ink shadow-[0_1px_0_rgba(26,22,20,0.12),inset_0_-1px_0_rgba(26,22,20,0.08)];
+    line-height: 1;
+  }
+
   /* 表格 */
   .editorial-table {
     @apply w-full border-collapse text-sm;
@@ -155,6 +162,16 @@
 @layer utilities {
   .text-balance { text-wrap: balance; }
   .text-pretty { text-wrap: pretty; }
+
+  /* 隐藏滚动条但保留滚动能力 */
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* 横向滚动两端淡出蒙版 */
+  .fade-x {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  }
 }
 
 /* ============= TypewriterPad 动效 ============= */

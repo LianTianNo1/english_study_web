@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { GRAMMAR_LESSONS, type GrammarExercise } from '@/data/grammar-lessons';
 import { grammarRepo } from '@/db/repositories/grammar';
@@ -454,16 +454,32 @@ const STAGE_LABEL: Record<Step, string> = {
 };
 
 function StepperBar({ stages, current }: { stages: Step[]; current: number }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = activeRef.current;
+    if (!node) return;
+    // 平滑居中
+    node.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [current]);
+
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto pb-2">
+    <div
+      ref={scrollerRef}
+      className="no-scrollbar fade-x flex items-center gap-1.5 overflow-x-auto pb-2"
+    >
       {stages.map((s, i) => (
         <Fragment key={s}>
-          <div className={cn(
-            'flex shrink-0 items-center gap-1.5 rounded-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition',
-            i < current && 'border-moss bg-moss-50 text-moss-700',
-            i === current && 'border-ink bg-ink text-paper',
-            i > current && 'border-paper3 bg-paper text-ink3'
-          )}>
+          <div
+            ref={i === current ? activeRef : undefined}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition',
+              i < current && 'border-moss bg-moss-50 text-moss-700',
+              i === current && 'border-ink bg-ink text-paper',
+              i > current && 'border-paper3 bg-paper text-ink3'
+            )}
+          >
             <span>{String(i + 1).padStart(2, '0')}</span>
             <span>{STAGE_LABEL[s]}</span>
             {i < current && <CheckCircle2 size={10} />}
@@ -495,13 +511,20 @@ const TYPE_LABEL: Record<GrammarExercise['type'], string> = {
 
 function Footer({ onPrev, onNext, nextLabel }: { onPrev?: () => void; onNext: () => void; nextLabel: string }) {
   return (
-    <div className="mt-6 flex items-center justify-between">
-      {onPrev ? (
-        <button onClick={onPrev} className="btn-ghost"><ArrowLeft size={14} /> 上一步</button>
-      ) : <span />}
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-ink3">← → 翻页 · ↵ 下一步</span>
+    <div className="mt-6 space-y-4">
+      <div className="flex items-center justify-between">
+        {onPrev ? (
+          <button onClick={onPrev} className="btn-ghost"><ArrowLeft size={14} /> 上一步</button>
+        ) : <span />}
         <button onClick={onNext} className="btn-accent">{nextLabel} <ArrowRight size={16} /></button>
+      </div>
+      <div className="flex items-center justify-center gap-2 border-t border-paper3/60 pt-3 font-mono text-xs uppercase tracking-[0.2em] text-ink3">
+        <kbd className="kbd">←</kbd>
+        <kbd className="kbd">→</kbd>
+        <span className="text-ink3/70">翻页</span>
+        <span className="text-paper3">·</span>
+        <kbd className="kbd">↵</kbd>
+        <span className="text-ink3/70">下一步</span>
       </div>
     </div>
   );
