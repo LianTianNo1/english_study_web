@@ -6,4 +6,9 @@ dist-ssr
 .vite
 *.log
 .eslintcache
+.env
+.env.local
+.env.*.local
 public/data
+.vite-dev.log
+.superpowers

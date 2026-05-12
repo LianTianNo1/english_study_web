@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createHashRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { Home } from './pages/Home';
 import { Onboarding } from './pages/Onboarding';
@@ -11,7 +11,8 @@ import { GrammarLesson } from './pages/GrammarLesson';
 import { Stats } from './pages/Stats';
 import { Settings } from './pages/Settings';
 
-export const router = createBrowserRouter([
+// 使用 HashRouter：URL 形如 /#/learn，GitHub Pages 等静态托管刷新不会 404
+export const router = createHashRouter([
   {
     path: '/onboarding',
     element: <Onboarding />,

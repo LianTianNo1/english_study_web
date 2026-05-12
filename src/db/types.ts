@@ -14,14 +14,22 @@ export interface LevelMeta {
   totalEstimate: number;
 }
 
+/** 构造数据文件的完整 URL —— Web Worker 里 fetch 相对路径会以 worker 脚本为基准，所以必须给绝对 URL */
+function dataUrl(filename: string): string {
+  // BASE_URL 由 Vite 注入：开发态 = '/'，部署到子路径时如 '/english/'
+  const base = import.meta.env.BASE_URL || '/';
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}${base}data/${filename}`;
+}
+
 export const LEVELS: LevelMeta[] = [
-  { id: 'junior', name: '初中',   sourceFile: '/data/1-初中-顺序.json',   totalEstimate: 3223 },
-  { id: 'senior', name: '高中',   sourceFile: '/data/2-高中-顺序.json',   totalEstimate: 6008 },
-  { id: 'cet4',   name: 'CET4',  sourceFile: '/data/3-CET4-顺序.json',  totalEstimate: 7508 },
-  { id: 'cet6',   name: 'CET6',  sourceFile: '/data/4-CET6-顺序.json',  totalEstimate: 5651 },
-  { id: 'pge',    name: '考研',   sourceFile: '/data/5-考研-顺序.json',   totalEstimate: 9602 },
-  { id: 'toefl',  name: '托福',   sourceFile: '/data/6-托福-顺序.json',   totalEstimate: 13477 },
-  { id: 'sat',    name: 'SAT',   sourceFile: '/data/7-SAT-顺序.json',   totalEstimate: 8887 },
+  { id: 'junior', name: '初中',   sourceFile: dataUrl('1-初中-顺序.json'),   totalEstimate: 3223 },
+  { id: 'senior', name: '高中',   sourceFile: dataUrl('2-高中-顺序.json'),   totalEstimate: 6008 },
+  { id: 'cet4',   name: 'CET4',  sourceFile: dataUrl('3-CET4-顺序.json'),  totalEstimate: 7508 },
+  { id: 'cet6',   name: 'CET6',  sourceFile: dataUrl('4-CET6-顺序.json'),  totalEstimate: 5651 },
+  { id: 'pge',    name: '考研',   sourceFile: dataUrl('5-考研-顺序.json'),   totalEstimate: 9602 },
+  { id: 'toefl',  name: '托福',   sourceFile: dataUrl('6-托福-顺序.json'),   totalEstimate: 13477 },
+  { id: 'sat',    name: 'SAT',   sourceFile: dataUrl('7-SAT-顺序.json'),   totalEstimate: 8887 },
 ];
 
 export interface Translation {
