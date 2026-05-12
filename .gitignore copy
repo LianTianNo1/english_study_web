@@ -1,0 +1,46 @@
+node_modules/
+# JetBrains IDE — 本地配置与索引，勿入库（避免覆盖他人 workspace / 路径冲突）
+.idea/
+
+.DS_Store
+.mcp.json
+**/target/
+.claude/
+.cursor
+.cursorrules
+.cursorrules.md
+.cursor/
+
+# Allow shared Cursor adapter assets for constitution domains
+!docs/ai-constitution/ai-constitution-autotest/.cursor/
+!docs/ai-constitution/ai-constitution-autotest/.cursor/**
+docs/ai-constitution/ai-constitution-autotest/.cursor/.DS_Store
+
+# Allow shared design style assets for design constitution
+!docs/ai-constitution/ai-constitution-design/.cursor/
+!docs/ai-constitution/ai-constitution-design/.cursor/skills/
+!docs/ai-constitution/ai-constitution-design/.cursor/skills/Page Specification Development/
+!docs/ai-constitution/ai-constitution-design/.cursor/skills/Page Specification Development/Design_style/
+!docs/ai-constitution/ai-constitution-design/.cursor/skills/Page Specification Development/Design_style/**
+docs/ai-constitution/ai-constitution-design/.cursor/skills/Page Specification Development/Design_style/.DS_Store
+
+# Allow frontend constitution Cursor assets
+!docs/ai-constitution/ai-constitution-frontend/.cursor/
+!docs/ai-constitution/ai-constitution-frontend/.cursor/**
+docs/ai-constitution/ai-constitution-frontend/.cursor/.DS_Store
+.claude/settings.local.json
+".idea/" 
+
+# Local package manager workspace artifacts
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Maven flatten plugin artifacts
+.flattened-pom.xml
+".idea/"
+
+# Playwright MCP 本地运行时产物（页面快照 / 截图等，按用户与会话生成）
+.playwright-mcp/
+
+# Local backend service port overrides — not for commit
+**/application-local.yml

@@ -1,0 +1,695 @@
+/**
+ * 0 基础语法路径 · 25 节种子课程
+ * 每节课包含：场景导入 → 5 例句 → 猜规律 → 揭晓公式 → 5 题练习
+ */
+
+export interface GrammarExample {
+  en: string;
+  zh: string;
+  highlight?: string[]; // 在例句中高亮的关键词
+}
+
+export interface GrammarExercise {
+  type: 'choice' | 'fillblank';
+  question: string;
+  options?: string[];
+  answer: string;
+  explain?: string;
+}
+
+export interface GrammarLesson {
+  id: string;
+  index: number;
+  title: string;
+  subtitle: string;
+  scene: string;
+  examples: GrammarExample[];
+  hint: string;
+  formula: {
+    rule: string;
+    detail: string;
+    table?: { head: string[]; rows: string[][] };
+  };
+  exercises: GrammarExercise[];
+}
+
+export const GRAMMAR_LESSONS: GrammarLesson[] = [
+  {
+    id: 'l01-be-verb',
+    index: 1,
+    title: '你好，be 动词',
+    subtitle: 'am / is / are 三兄弟',
+    scene: '想介绍自己叫小明？说"我是学生"？英文里有个"小帮手"叫 be 动词，专门负责连接"谁"和"是什么"。',
+    examples: [
+      { en: 'I am Xiao Ming.', zh: '我是小明。', highlight: ['am'] },
+      { en: 'You are my friend.', zh: '你是我的朋友。', highlight: ['are'] },
+      { en: 'He is a teacher.', zh: '他是老师。', highlight: ['is'] },
+      { en: 'She is happy.', zh: '她很开心。', highlight: ['is'] },
+      { en: 'We are students.', zh: '我们是学生。', highlight: ['are'] },
+    ],
+    hint: '观察每句话里 be 动词形式（am/is/are）和前面的"谁"。它们之间有什么对应关系？',
+    formula: {
+      rule: 'be 动词随主语变形：I → am；He/She/It → is；You/We/They → are',
+      detail: '记住口诀：我是 am，他她它 is，你 we they 是 are。',
+      table: {
+        head: ['主语', 'be 动词'],
+        rows: [
+          ['I', 'am'],
+          ['He / She / It', 'is'],
+          ['You / We / They', 'are'],
+        ],
+      },
+    },
+    exercises: [
+      { type: 'choice', question: 'I ___ a student.', options: ['am', 'is', 'are'], answer: 'am' },
+      { type: 'choice', question: 'She ___ my sister.', options: ['am', 'is', 'are'], answer: 'is' },
+      { type: 'choice', question: 'They ___ from China.', options: ['am', 'is', 'are'], answer: 'are' },
+      { type: 'choice', question: 'It ___ a cat.', options: ['am', 'is', 'are'], answer: 'is' },
+      { type: 'choice', question: 'We ___ friends.', options: ['am', 'is', 'are'], answer: 'are' },
+    ],
+  },
+  {
+    id: 'l02-pronouns',
+    index: 2,
+    title: '人称代词入门',
+    subtitle: 'I / You / He / She / It / We / They',
+    scene: '中文里"我、你、他、她、它、我们、他们"对应英文里也有 7 个常用代词。',
+    examples: [
+      { en: 'I love English.', zh: '我喜欢英语。' },
+      { en: 'You are kind.', zh: '你很善良。' },
+      { en: 'He plays football.', zh: '他踢足球。' },
+      { en: 'She sings well.', zh: '她唱得好。' },
+      { en: 'It is a dog.', zh: '它是只狗。' },
+    ],
+    hint: '注意 I 永远大写。He/She 区分男女，It 用于物品和动物。',
+    formula: {
+      rule: '英语代词分单数 (I/You/He/She/It) 和复数 (We/You/They)',
+      detail: '注意 you 单复数同形。第三人称单数 he/she/it 会影响动词形式（下一课会讲）。',
+    },
+    exercises: [
+      { type: 'choice', question: '"我们"是？', options: ['I', 'We', 'They'], answer: 'We' },
+      { type: 'choice', question: '指一只猫用？', options: ['He', 'She', 'It'], answer: 'It' },
+      { type: 'choice', question: '指"她"用？', options: ['He', 'She', 'It'], answer: 'She' },
+      { type: 'choice', question: '"他们"是？', options: ['We', 'They', 'You'], answer: 'They' },
+      { type: 'choice', question: '"我"在英语里永远？', options: ['小写 i', '大写 I', '都可以'], answer: '大写 I' },
+    ],
+  },
+  {
+    id: 'l03-plural',
+    index: 3,
+    title: '单数与复数',
+    subtitle: '一个 vs 多个',
+    scene: '说"一个苹果"和"很多苹果"在英语里词的形态会变——多个时通常加 -s。',
+    examples: [
+      { en: 'one apple', zh: '一个苹果' },
+      { en: 'two apples', zh: '两个苹果', highlight: ['apples'] },
+      { en: 'a book', zh: '一本书' },
+      { en: 'many books', zh: '很多书', highlight: ['books'] },
+      { en: 'one bus → two buses', zh: '一辆公交 → 两辆公交', highlight: ['buses'] },
+    ],
+    hint: '观察"多个"时单词末尾发生了什么？',
+    formula: {
+      rule: '复数大多加 -s；以 s/x/ch/sh 结尾加 -es；以辅音+y 结尾把 y 改 i 加 es',
+      detail: 'cat → cats；box → boxes；baby → babies。少数不规则：man → men, child → children。',
+    },
+    exercises: [
+      { type: 'fillblank', question: '"3 cats" 的复数形式：cat → ___', answer: 'cats' },
+      { type: 'fillblank', question: 'box → ___', answer: 'boxes' },
+      { type: 'fillblank', question: 'baby → babies；city → ___', answer: 'cities' },
+      { type: 'choice', question: '"两个孩子"是？', options: ['two childs', 'two children', 'two childes'], answer: 'two children' },
+      { type: 'choice', question: '"3 buses" 正确吗？', options: ['正确', '错误'], answer: '正确' },
+    ],
+  },
+  {
+    id: 'l04-articles',
+    index: 4,
+    title: '冠词 a / an / the',
+    subtitle: '这是"一个"还是"那个"？',
+    scene: '"一个苹果"和"那个苹果"在英语里要分清——a/an 表示"任意一个"，the 表示"那个特定的"。',
+    examples: [
+      { en: 'I have a pen.', zh: '我有一支笔。', highlight: ['a'] },
+      { en: 'She is an artist.', zh: '她是一位艺术家。', highlight: ['an'] },
+      { en: 'The pen is on the desk.', zh: '那支笔在桌上。', highlight: ['The', 'the'] },
+      { en: 'I want an apple.', zh: '我想要一个苹果。', highlight: ['an'] },
+      { en: 'The sun rises in the east.', zh: '太阳从东方升起。', highlight: ['The', 'the'] },
+    ],
+    hint: '为什么有时用 a 有时用 an？看后面那个词的首音。',
+    formula: {
+      rule: 'a 用于辅音音开头；an 用于元音音 (a/e/i/o/u) 开头；the 表示特指',
+      detail: 'a book / an apple / an hour（h 不发音）/ a university（发 you 音）。说话双方都知道是哪一个时用 the。',
+    },
+    exercises: [
+      { type: 'choice', question: '___ orange', options: ['a', 'an', 'the'], answer: 'an' },
+      { type: 'choice', question: '___ dog', options: ['a', 'an'], answer: 'a' },
+      { type: 'choice', question: '___ hour', options: ['a', 'an'], answer: 'an' },
+      { type: 'choice', question: '"那本书在桌上"中"那本"用？', options: ['a', 'an', 'the'], answer: 'the' },
+      { type: 'choice', question: '___ university', options: ['a', 'an'], answer: 'a' },
+    ],
+  },
+  {
+    id: 'l05-have',
+    index: 5,
+    title: '"有"——have / has',
+    subtitle: '我有 / 他有',
+    scene: '想说"我有一只猫"或"她有一辆车"？英语用 have 和 has。',
+    examples: [
+      { en: 'I have a cat.', zh: '我有一只猫。', highlight: ['have'] },
+      { en: 'You have time.', zh: '你有时间。', highlight: ['have'] },
+      { en: 'He has a car.', zh: '他有一辆车。', highlight: ['has'] },
+      { en: 'She has long hair.', zh: '她有长发。', highlight: ['has'] },
+      { en: 'They have a dog.', zh: '他们有一只狗。', highlight: ['have'] },
+    ],
+    hint: '什么时候用 have，什么时候用 has？规律和上节 be 动词一样吗？',
+    formula: {
+      rule: '第三人称单数 (he/she/it) 用 has；其余 (I/you/we/they) 用 have',
+      detail: '一句话：他她它 has，其他都 have。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I ___ a brother.', options: ['have', 'has'], answer: 'have' },
+      { type: 'choice', question: 'She ___ a new phone.', options: ['have', 'has'], answer: 'has' },
+      { type: 'choice', question: 'They ___ many books.', options: ['have', 'has'], answer: 'have' },
+      { type: 'choice', question: 'My dog ___ four legs.', options: ['have', 'has'], answer: 'has' },
+      { type: 'choice', question: 'We ___ a meeting today.', options: ['have', 'has'], answer: 'have' },
+    ],
+  },
+  {
+    id: 'l06-present-simple',
+    index: 6,
+    title: '一般现在时',
+    subtitle: '描述常做的事',
+    scene: '"我每天读书"、"她喜欢苹果"——这些"经常做"的事用一般现在时。',
+    examples: [
+      { en: 'I read books every day.', zh: '我每天读书。', highlight: ['read'] },
+      { en: 'She likes apples.', zh: '她喜欢苹果。', highlight: ['likes'] },
+      { en: 'We play football on Sundays.', zh: '我们周日踢足球。', highlight: ['play'] },
+      { en: 'He goes to school by bus.', zh: '他坐公交上学。', highlight: ['goes'] },
+      { en: 'It rains a lot here.', zh: '这里经常下雨。', highlight: ['rains'] },
+    ],
+    hint: '动词变化也跟主语相关。注意 she/he/it 后面动词有什么不同？',
+    formula: {
+      rule: '主语是 he/she/it 时，动词加 -s（部分加 -es）',
+      detail: '一般加 s：likes, plays；以 s/x/ch/sh/o 结尾加 es：goes, washes, watches。',
+    },
+    exercises: [
+      { type: 'choice', question: 'He ___ English every day.', options: ['study', 'studies'], answer: 'studies' },
+      { type: 'choice', question: 'They ___ a lot of fruit.', options: ['eat', 'eats'], answer: 'eat' },
+      { type: 'choice', question: 'She ___ TV at night.', options: ['watch', 'watches'], answer: 'watches' },
+      { type: 'choice', question: 'I ___ to work by subway.', options: ['go', 'goes'], answer: 'go' },
+      { type: 'choice', question: 'The cat ___ fish.', options: ['like', 'likes'], answer: 'likes' },
+    ],
+  },
+  {
+    id: 'l07-present-cont',
+    index: 7,
+    title: '现在进行时',
+    subtitle: '"正在做"',
+    scene: '"我正在吃饭"、"她正在跑步"——表示"此刻正在进行"。',
+    examples: [
+      { en: 'I am eating.', zh: '我正在吃饭。', highlight: ['am eating'] },
+      { en: 'She is running.', zh: '她正在跑步。', highlight: ['is running'] },
+      { en: 'They are playing games.', zh: '他们正在打游戏。', highlight: ['are playing'] },
+      { en: 'He is reading a book.', zh: '他正在读书。', highlight: ['is reading'] },
+      { en: 'We are studying.', zh: '我们正在学习。', highlight: ['are studying'] },
+    ],
+    hint: '观察句子结构：动词前面有什么？动词末尾有什么？',
+    formula: {
+      rule: '结构：be 动词 (am/is/are) + 动词-ing',
+      detail: '动词加 ing 规则：一般直接加（read→reading）；以 e 结尾去 e 加 ing（write→writing）；短元音单辅音双写末字母（run→running）。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I am ___ now.', options: ['eat', 'eating'], answer: 'eating' },
+      { type: 'choice', question: 'She ___ singing.', options: ['is', 'are'], answer: 'is' },
+      { type: 'choice', question: 'They ___ playing basketball.', options: ['is', 'are'], answer: 'are' },
+      { type: 'fillblank', question: 'run + ing = ___', answer: 'running' },
+      { type: 'fillblank', question: 'write + ing = ___', answer: 'writing' },
+    ],
+  },
+  {
+    id: 'l08-past-simple',
+    index: 8,
+    title: '一般过去时',
+    subtitle: '"昨天发生了什么"',
+    scene: '"我昨天看了电影"、"她去年来过这里"——过去发生的事用过去时。',
+    examples: [
+      { en: 'I watched a movie yesterday.', zh: '我昨天看了电影。', highlight: ['watched'] },
+      { en: 'She visited her grandma last week.', zh: '她上周看望了奶奶。', highlight: ['visited'] },
+      { en: 'We went to Beijing in 2020.', zh: '我们 2020 年去了北京。', highlight: ['went'] },
+      { en: 'He bought a new bike.', zh: '他买了一辆新自行车。', highlight: ['bought'] },
+      { en: 'They saw a rainbow.', zh: '他们看到了彩虹。', highlight: ['saw'] },
+    ],
+    hint: '动词末尾或形态有什么变化？',
+    formula: {
+      rule: '规则动词加 -ed；不规则动词需单独记忆',
+      detail: 'watch → watched, play → played；不规则：go → went, buy → bought, see → saw, do → did, have → had。',
+    },
+    exercises: [
+      { type: 'fillblank', question: 'play 的过去式：___', answer: 'played' },
+      { type: 'fillblank', question: 'go 的过去式：___', answer: 'went' },
+      { type: 'fillblank', question: 'see 的过去式：___', answer: 'saw' },
+      { type: 'fillblank', question: 'have 的过去式：___', answer: 'had' },
+      { type: 'choice', question: 'I ___ him yesterday.', options: ['meet', 'met'], answer: 'met' },
+    ],
+  },
+  {
+    id: 'l09-future',
+    index: 9,
+    title: '一般将来时',
+    subtitle: '"将要做"',
+    scene: '"我明天去北京"、"她将来想当医生"——表达未来的事。',
+    examples: [
+      { en: 'I will call you tomorrow.', zh: '我明天给你打电话。', highlight: ['will call'] },
+      { en: "She's going to travel next month.", zh: '她下个月要去旅行。', highlight: ['going to travel'] },
+      { en: 'We will see.', zh: '我们走着瞧。', highlight: ['will see'] },
+      { en: "It's going to rain.", zh: '快要下雨了。', highlight: ['going to rain'] },
+      { en: 'They will come back soon.', zh: '他们很快会回来。', highlight: ['will come'] },
+    ],
+    hint: '两种说法：will 和 be going to。',
+    formula: {
+      rule: '结构：will + 动词原形 / be going to + 动词原形',
+      detail: 'will 偏临时决定或预测；be going to 偏计划好的或有迹象的。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I ___ help you.', options: ['will', 'am'], answer: 'will' },
+      { type: 'choice', question: 'She is ___ to study abroad.', options: ['go', 'going'], answer: 'going' },
+      { type: 'choice', question: 'They will ___ tomorrow.', options: ['came', 'come'], answer: 'come' },
+      { type: 'choice', question: 'It is going ___ rain.', options: ['to', 'for'], answer: 'to' },
+      { type: 'fillblank', question: '"我会努力" I ___ try my best.', answer: 'will' },
+    ],
+  },
+  {
+    id: 'l10-present-perfect',
+    index: 10,
+    title: '现在完成时入门',
+    subtitle: '"已经做过"',
+    scene: '"我已经吃过饭了"、"她已经学了三年英语"——强调"做过"对现在的影响。',
+    examples: [
+      { en: 'I have finished my homework.', zh: '我已经写完作业了。', highlight: ['have finished'] },
+      { en: 'She has lived here for 3 years.', zh: '她在这住了 3 年。', highlight: ['has lived'] },
+      { en: 'We have seen this movie.', zh: '我们看过这部电影。', highlight: ['have seen'] },
+      { en: 'He has just left.', zh: '他刚刚离开。', highlight: ['has left'] },
+      { en: 'They have already arrived.', zh: '他们已经到了。', highlight: ['have arrived'] },
+    ],
+    hint: '结构有两部分。第一部分跟主语相关。',
+    formula: {
+      rule: '结构：have/has + 过去分词 (V-ed/不规则)',
+      detail: '主语 he/she/it 用 has；其余用 have。常配 already, just, ever, never, since, for。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I ___ finished it.', options: ['have', 'has'], answer: 'have' },
+      { type: 'choice', question: 'She ___ been to Paris.', options: ['have', 'has'], answer: 'has' },
+      { type: 'fillblank', question: 'see 的过去分词：___', answer: 'seen' },
+      { type: 'fillblank', question: 'do 的过去分词：___', answer: 'done' },
+      { type: 'choice', question: 'We have ___ here for 5 years.', options: ['live', 'lived'], answer: 'lived' },
+    ],
+  },
+  {
+    id: 'l11-aux-do',
+    index: 11,
+    title: '助动词 do / does / did',
+    subtitle: '问问题和否定',
+    scene: '想问"你喜欢苹果吗？"或者说"我不喜欢咖啡"——这时就需要助动词。',
+    examples: [
+      { en: 'Do you like apples?', zh: '你喜欢苹果吗？', highlight: ['Do'] },
+      { en: 'Does she play piano?', zh: '她弹钢琴吗？', highlight: ['Does'] },
+      { en: 'I do not (don\'t) drink coffee.', zh: '我不喝咖啡。', highlight: ["don't"] },
+      { en: 'He does not (doesn\'t) like fish.', zh: '他不喜欢鱼。', highlight: ["doesn't"] },
+      { en: 'Did you call him?', zh: '你给他打电话了吗？', highlight: ['Did'] },
+    ],
+    hint: '什么时候用 do/does/did？看主语和时态。',
+    formula: {
+      rule: '现在时：I/you/we/they 用 do；he/she/it 用 does。过去时：全部用 did。注意动词回归原形',
+      detail: '疑问：Do/Does/Did + 主语 + 动词原形？否定：主语 + don\'t/doesn\'t/didn\'t + 动词原形。',
+    },
+    exercises: [
+      { type: 'choice', question: '___ he like music?', options: ['Do', 'Does'], answer: 'Does' },
+      { type: 'choice', question: 'I ___ know him.', options: ["don't", "doesn't"], answer: "don't" },
+      { type: 'choice', question: 'She ___ have a car.', options: ["don't", "doesn't"], answer: "doesn't" },
+      { type: 'choice', question: '___ you go yesterday?', options: ['Do', 'Did'], answer: 'Did' },
+      { type: 'choice', question: 'Did you ___ it?', options: ['saw', 'see'], answer: 'see' },
+    ],
+  },
+  {
+    id: 'l12-modals',
+    index: 12,
+    title: '情态动词 can/may/must',
+    subtitle: '能、可以、必须',
+    scene: '"我会游泳"、"我可以进来吗？"、"你必须完成"——表达能力、许可、义务。',
+    examples: [
+      { en: 'I can swim.', zh: '我会游泳。', highlight: ['can'] },
+      { en: 'May I come in?', zh: '我可以进来吗？', highlight: ['May'] },
+      { en: 'You must finish it.', zh: '你必须完成。', highlight: ['must'] },
+      { en: 'She can speak French.', zh: '她会说法语。', highlight: ['can'] },
+      { en: 'You may go now.', zh: '你现在可以走了。', highlight: ['may'] },
+    ],
+    hint: '情态动词后面动词形态是？',
+    formula: {
+      rule: '情态动词后面跟动词原形，不随主语变化',
+      detail: 'can=能/会；may=可以/也许；must=必须。注意不能说 "She cans"。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I can ___.', options: ['swims', 'swim'], answer: 'swim' },
+      { type: 'choice', question: 'She ___ play piano.', options: ['can', 'cans'], answer: 'can' },
+      { type: 'choice', question: '"你必须努力" You ___ work hard.', options: ['must', 'may'], answer: 'must' },
+      { type: 'choice', question: '"我可以问个问题吗？" ___ I ask a question?', options: ['May', 'Must'], answer: 'May' },
+      { type: 'choice', question: 'He may ___ at home.', options: ['be', 'is'], answer: 'be' },
+    ],
+  },
+  {
+    id: 'l13-adj-adv',
+    index: 13,
+    title: '形容词与副词',
+    subtitle: '形容"什么样"与"怎么样"',
+    scene: '"她是个聪明的学生"和"她学得很努力"——分别描述"人"和"动作"。',
+    examples: [
+      { en: 'She is a smart student.', zh: '她是个聪明的学生。', highlight: ['smart'] },
+      { en: 'She studies hard.', zh: '她学得很努力。', highlight: ['hard'] },
+      { en: 'He runs fast.', zh: '他跑得快。', highlight: ['fast'] },
+      { en: 'The book is interesting.', zh: '这书很有趣。', highlight: ['interesting'] },
+      { en: 'He speaks slowly.', zh: '他说话慢。', highlight: ['slowly'] },
+    ],
+    hint: '形容词修饰名词；副词修饰动词。注意 slow → slowly 的变化。',
+    formula: {
+      rule: '形容词修饰名词；副词修饰动词。大多副词由形容词 + ly 构成',
+      detail: 'quick → quickly；slow → slowly；happy → happily。少数同形：fast/hard/early。',
+    },
+    exercises: [
+      { type: 'fillblank', question: 'quick → ___（副词）', answer: 'quickly' },
+      { type: 'fillblank', question: 'happy → ___', answer: 'happily' },
+      { type: 'choice', question: 'He sings ___.', options: ['beautiful', 'beautifully'], answer: 'beautifully' },
+      { type: 'choice', question: 'She is a ___ girl.', options: ['kind', 'kindly'], answer: 'kind' },
+      { type: 'choice', question: 'He runs very ___.', options: ['fast', 'fastly'], answer: 'fast' },
+    ],
+  },
+  {
+    id: 'l14-comparative',
+    index: 14,
+    title: '比较级与最高级',
+    subtitle: '更…… / 最……',
+    scene: '"她比我高"、"他是班里最高的"——比较两者或多者。',
+    examples: [
+      { en: 'She is taller than me.', zh: '她比我高。', highlight: ['taller', 'than'] },
+      { en: 'He is the tallest in the class.', zh: '他是班里最高的。', highlight: ['tallest'] },
+      { en: 'This book is more interesting.', zh: '这本书更有趣。', highlight: ['more interesting'] },
+      { en: 'Math is the most difficult subject.', zh: '数学是最难的科目。', highlight: ['most difficult'] },
+      { en: 'Today is better than yesterday.', zh: '今天比昨天好。', highlight: ['better'] },
+    ],
+    hint: '短词加 er/est，长词用 more/most。注意 good/bad 不规则。',
+    formula: {
+      rule: '短词：+ er/est；长词：more/most + 原形；不规则：good→better→best, bad→worse→worst',
+      detail: 'tall→taller→tallest；interesting→more interesting→most interesting。',
+    },
+    exercises: [
+      { type: 'fillblank', question: 'tall 的比较级：___', answer: 'taller' },
+      { type: 'fillblank', question: 'good 的比较级：___', answer: 'better' },
+      { type: 'choice', question: 'This is ___ than that.', options: ['more cheap', 'cheaper'], answer: 'cheaper' },
+      { type: 'choice', question: 'She is the ___ girl.', options: ['most beautiful', 'beautifullest'], answer: 'most beautiful' },
+      { type: 'choice', question: 'My English is ___ than before.', options: ['gooder', 'better'], answer: 'better' },
+    ],
+  },
+  {
+    id: 'l15-prep',
+    index: 15,
+    title: '时间地点介词 in/on/at',
+    subtitle: '什么时候用哪一个？',
+    scene: '"早上"、"周一"、"7 点"——时间介词容易混。',
+    examples: [
+      { en: 'I get up at 7.', zh: '我 7 点起床。', highlight: ['at'] },
+      { en: 'See you on Monday.', zh: '周一见。', highlight: ['on'] },
+      { en: 'I was born in 2000.', zh: '我 2000 年出生。', highlight: ['in'] },
+      { en: 'He lives in Beijing.', zh: '他住在北京。', highlight: ['in'] },
+      { en: 'The book is on the desk.', zh: '书在桌上。', highlight: ['on'] },
+    ],
+    hint: 'in 范围大；on 在表面或具体某天；at 是某点（时间/地点）。',
+    formula: {
+      rule: 'in 月/年/季节/大城市；on 具体日期/星期/表面；at 时刻点/小地点',
+      detail: 'in 2024 / in May / in summer / in China；on Monday / on May 1 / on the table；at 7 o\'clock / at the door。',
+    },
+    exercises: [
+      { type: 'choice', question: '___ Monday', options: ['in', 'on', 'at'], answer: 'on' },
+      { type: 'choice', question: '___ 8 a.m.', options: ['in', 'on', 'at'], answer: 'at' },
+      { type: 'choice', question: '___ 2025', options: ['in', 'on', 'at'], answer: 'in' },
+      { type: 'choice', question: 'The cat is ___ the box.', options: ['in', 'on', 'at'], answer: 'in' },
+      { type: 'choice', question: 'He lives ___ Beijing.', options: ['in', 'on', 'at'], answer: 'in' },
+    ],
+  },
+  {
+    id: 'l16-there-be',
+    index: 16,
+    title: 'there be 句型',
+    subtitle: '"有" 的另一种说法',
+    scene: '想说"桌上有一本书"、"教室里有 20 个学生"——表示某地有某物。',
+    examples: [
+      { en: 'There is a book on the desk.', zh: '桌上有一本书。', highlight: ['There is'] },
+      { en: 'There are 20 students.', zh: '有 20 个学生。', highlight: ['There are'] },
+      { en: 'There is some milk in the cup.', zh: '杯里有一些牛奶。', highlight: ['There is'] },
+      { en: 'There are no apples.', zh: '没有苹果。', highlight: ['There are'] },
+      { en: 'Is there a problem?', zh: '有问题吗？', highlight: ['Is there'] },
+    ],
+    hint: 'is 还是 are？看后面的名词。',
+    formula: {
+      rule: 'There is + 单数/不可数；There are + 复数',
+      detail: '"就近原则"：There is a book and two pens.（看最近的 a book）。',
+    },
+    exercises: [
+      { type: 'choice', question: 'There ___ a cat.', options: ['is', 'are'], answer: 'is' },
+      { type: 'choice', question: 'There ___ many books.', options: ['is', 'are'], answer: 'are' },
+      { type: 'choice', question: 'There ___ some water.', options: ['is', 'are'], answer: 'is' },
+      { type: 'choice', question: 'There ___ five apples and a pear.', options: ['is', 'are'], answer: 'are' },
+      { type: 'choice', question: 'There ___ a pen and three pencils.', options: ['is', 'are'], answer: 'is' },
+    ],
+  },
+  {
+    id: 'l17-questions',
+    index: 17,
+    title: '疑问句',
+    subtitle: '怎么问问题？',
+    scene: '"你是学生吗？"、"她叫什么名字？"——一般疑问和特殊疑问。',
+    examples: [
+      { en: 'Are you a student?', zh: '你是学生吗？', highlight: ['Are'] },
+      { en: 'Do you like coffee?', zh: '你喜欢咖啡吗？', highlight: ['Do'] },
+      { en: 'What is your name?', zh: '你叫什么名字？', highlight: ['What'] },
+      { en: 'Where do you live?', zh: '你住哪里？', highlight: ['Where'] },
+      { en: 'How old are you?', zh: '你多大了？', highlight: ['How old'] },
+    ],
+    hint: '一般疑问句把 be/助动词提到前面；特殊疑问句用 wh 开头。',
+    formula: {
+      rule: '一般疑问：be/Do/Does/Did + 主语...？ 特殊疑问：what/where/who/when/why/how + 一般疑问结构',
+      detail: '回答时一般用 Yes, I am. / No, I don\'t. 等。',
+    },
+    exercises: [
+      { type: 'choice', question: '___ you English?', options: ['Are', 'Do'], answer: 'Are' },
+      { type: 'choice', question: '___ you speak Chinese?', options: ['Are', 'Do'], answer: 'Do' },
+      { type: 'choice', question: '"她叫什么名字" ___ is her name?', options: ['What', 'Where'], answer: 'What' },
+      { type: 'choice', question: '"你住哪？" ___ do you live?', options: ['What', 'Where'], answer: 'Where' },
+      { type: 'choice', question: '___ are you?（多大）', options: ['How', 'How old'], answer: 'How old' },
+    ],
+  },
+  {
+    id: 'l18-negation',
+    index: 18,
+    title: '否定句',
+    subtitle: '"不是 / 不做"',
+    scene: '"我不饿"、"她不喜欢咖啡"——加入 not 表否定。',
+    examples: [
+      { en: "I am not hungry.", zh: '我不饿。', highlight: ['am not'] },
+      { en: "She doesn't like coffee.", zh: '她不喜欢咖啡。', highlight: ["doesn't"] },
+      { en: 'We are not students.', zh: '我们不是学生。', highlight: ['are not'] },
+      { en: "He didn't go.", zh: '他没去。', highlight: ["didn't"] },
+      { en: "I can't swim.", zh: '我不会游泳。', highlight: ["can't"] },
+    ],
+    hint: '否定的位置和助动词、be、情态动词都有关。',
+    formula: {
+      rule: 'be 后加 not；动词前加 don\'t/doesn\'t/didn\'t；情态动词后加 not',
+      detail: 'I am not / She isn\'t / I don\'t / He doesn\'t / We didn\'t / I can\'t。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I ___ a doctor.', options: ['am not', "don't"], answer: 'am not' },
+      { type: 'choice', question: 'She ___ like fish.', options: ["don't", "doesn't"], answer: "doesn't" },
+      { type: 'choice', question: 'They ___ go yesterday.', options: ["don't", "didn't"], answer: "didn't" },
+      { type: 'choice', question: 'I ___ speak French.', options: ["can't", "isn't"], answer: "can't" },
+      { type: 'choice', question: 'It ___ a cat. It is a dog.', options: ["isn't", "doesn't"], answer: "isn't" },
+    ],
+  },
+  {
+    id: 'l19-imperative',
+    index: 19,
+    title: '祈使句',
+    subtitle: '"请做某事"',
+    scene: '"请坐下"、"别说话"——发出请求或命令。',
+    examples: [
+      { en: 'Sit down, please.', zh: '请坐。', highlight: ['Sit'] },
+      { en: 'Be quiet.', zh: '安静。', highlight: ['Be'] },
+      { en: "Don't run.", zh: '不要跑。', highlight: ["Don't"] },
+      { en: 'Open the door.', zh: '开门。', highlight: ['Open'] },
+      { en: "Let's go.", zh: '我们走吧。', highlight: ["Let's"] },
+    ],
+    hint: '祈使句没有主语，直接以动词开头。',
+    formula: {
+      rule: '肯定：动词原形 + 其他；否定：Don\'t + 动词原形；建议："Let\'s + 动词原形"',
+      detail: 'Be careful（注意 be）；Don\'t worry（别担心）。',
+    },
+    exercises: [
+      { type: 'choice', question: '"安静" 翻译：', options: ['Quiet.', 'Be quiet.'], answer: 'Be quiet.' },
+      { type: 'choice', question: '"不要说话" ___ talk.', options: ['Not', "Don't"], answer: "Don't" },
+      { type: 'choice', question: '"我们一起去" ___ go together.', options: ["Let's", 'We'], answer: "Let's" },
+      { type: 'choice', question: '"请坐" ___ down, please.', options: ['Sit', 'Sitting'], answer: 'Sit' },
+      { type: 'choice', question: '"小心点" Be ___.', options: ['care', 'careful'], answer: 'careful' },
+    ],
+  },
+  {
+    id: 'l20-conjunctions',
+    index: 20,
+    title: '并列连词 and/but/or',
+    subtitle: '连接两个内容',
+    scene: '"我喜欢苹果和橘子"、"她聪明但懒"——连接想法。',
+    examples: [
+      { en: 'I like apples and oranges.', zh: '我喜欢苹果和橘子。', highlight: ['and'] },
+      { en: 'She is smart but lazy.', zh: '她聪明但懒。', highlight: ['but'] },
+      { en: 'Coffee or tea?', zh: '咖啡还是茶？', highlight: ['or'] },
+      { en: 'It is sunny and warm.', zh: '阳光明媚而且温暖。', highlight: ['and'] },
+      { en: 'I want to go, but I am tired.', zh: '我想去，但我累了。', highlight: ['but'] },
+    ],
+    hint: 'and = 并且；but = 但是；or = 或者。',
+    formula: {
+      rule: 'and 表并列；but 表转折；or 表选择',
+      detail: '注意 or 用于疑问选择句和否定句的"也不"。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I like apples ___ pears.', options: ['and', 'but'], answer: 'and' },
+      { type: 'choice', question: 'He is rich ___ unhappy.', options: ['and', 'but'], answer: 'but' },
+      { type: 'choice', question: 'Tea ___ coffee?', options: ['and', 'or'], answer: 'or' },
+      { type: 'choice', question: 'Small ___ powerful.', options: ['or', 'but'], answer: 'but' },
+      { type: 'choice', question: 'Cats ___ dogs are pets.', options: ['and', 'but'], answer: 'and' },
+    ],
+  },
+  {
+    id: 'l21-when',
+    index: 21,
+    title: '时间状语从句',
+    subtitle: 'when / before / after',
+    scene: '"我做完作业再玩"、"她洗澡之前吃饭"——表达时间先后。',
+    examples: [
+      { en: 'I will call you when I arrive.', zh: '我到了打给你。', highlight: ['when'] },
+      { en: 'Brush your teeth before you sleep.', zh: '睡前刷牙。', highlight: ['before'] },
+      { en: 'After class, we play.', zh: '下课后我们玩。', highlight: ['After'] },
+      { en: 'When it rains, I stay home.', zh: '下雨我就待家里。', highlight: ['When'] },
+      { en: 'I read after dinner.', zh: '我饭后读书。', highlight: ['after'] },
+    ],
+    hint: '注意：主句是将来时，从句要用现在时。',
+    formula: {
+      rule: '时间状语从句中"主将从现"——主句将来时时，从句用现在时表示将来',
+      detail: 'I will go when he comes（不是 will come）。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I will tell him when he ___.', options: ['comes', 'will come'], answer: 'comes' },
+      { type: 'choice', question: 'We eat ___ we get hungry.', options: ['when', 'before'], answer: 'when' },
+      { type: 'choice', question: '___ class, we have lunch.', options: ['Before', 'After'], answer: 'After' },
+      { type: 'choice', question: 'Wash hands ___ eating.', options: ['before', 'after'], answer: 'before' },
+      { type: 'choice', question: '"主将从现" 是说：从句用？', options: ['将来时', '现在时'], answer: '现在时' },
+    ],
+  },
+  {
+    id: 'l22-object-clause',
+    index: 22,
+    title: '宾语从句入门',
+    subtitle: '"我知道他来了"',
+    scene: '"我知道她来"、"他说他病了"——一个句子作宾语。',
+    examples: [
+      { en: 'I know that he is here.', zh: '我知道他在这里。', highlight: ['that'] },
+      { en: 'She said she was tired.', zh: '她说她累了。' },
+      { en: 'I think you are right.', zh: '我觉得你对。' },
+      { en: 'He told me he loves music.', zh: '他告诉我他喜欢音乐。' },
+      { en: 'I wonder if she will come.', zh: '我想知道她会不会来。', highlight: ['if'] },
+    ],
+    hint: '陈述用 that（可省略），是否用 if/whether。',
+    formula: {
+      rule: '宾语从句：陈述用 that；一般疑问用 if/whether；特殊疑问用原疑问词',
+      detail: '从句要用陈述语序（不要再倒装）。"主句过去 → 从句也过去"。',
+    },
+    exercises: [
+      { type: 'choice', question: 'I think ___ he is nice.', options: ['that', 'if'], answer: 'that' },
+      { type: 'choice', question: 'I don\'t know ___ he will come.', options: ['that', 'if'], answer: 'if' },
+      { type: 'choice', question: 'She said she ___ a teacher.（主句过去时）', options: ['is', 'was'], answer: 'was' },
+      { type: 'choice', question: '宾语从句要用什么语序？', options: ['倒装', '陈述'], answer: '陈述' },
+      { type: 'choice', question: 'He asked ___ I was OK.', options: ['that', 'if'], answer: 'if' },
+    ],
+  },
+  {
+    id: 'l23-if',
+    index: 23,
+    title: 'if 条件句入门',
+    subtitle: '"如果……就……"',
+    scene: '"如果下雨我就待家"——表示某条件下会发生的事。',
+    examples: [
+      { en: 'If it rains, I will stay home.', zh: '如果下雨我就待家。', highlight: ['If'] },
+      { en: 'If you study hard, you will pass.', zh: '努力学就能过。' },
+      { en: 'I will go if you come.', zh: '你来我就去。' },
+      { en: 'If she is free, she will call.', zh: '她有空就会打来。' },
+      { en: "If you don't hurry, you will be late.", zh: '不快点就会迟到。' },
+    ],
+    hint: '又是"主将从现"！从句用现在时，主句用将来时。',
+    formula: {
+      rule: 'if 引导真实条件：主句 will + 动词原形；从句一般现在时',
+      detail: '不要写 "If it will rain"，要写 "If it rains"。',
+    },
+    exercises: [
+      { type: 'choice', question: 'If it ___ tomorrow, we will cancel.', options: ['rains', 'will rain'], answer: 'rains' },
+      { type: 'choice', question: 'If you study, you ___ pass.', options: ['will', 'are'], answer: 'will' },
+      { type: 'choice', question: 'I ___ go if you call me.', options: ['will', 'am'], answer: 'will' },
+      { type: 'choice', question: 'If she ___ free, she will help.', options: ['is', 'will be'], answer: 'is' },
+      { type: 'choice', question: 'If you don\'t hurry, you ___ late.', options: ['will be', 'are'], answer: 'will be' },
+    ],
+  },
+  {
+    id: 'l24-relative',
+    index: 24,
+    title: '定语从句入门',
+    subtitle: 'who / which / that',
+    scene: '"那个会说英语的男孩"、"那本我喜欢的书"——用一个句子修饰名词。',
+    examples: [
+      { en: 'The boy who speaks English is my friend.', zh: '会说英语的男孩是我朋友。', highlight: ['who'] },
+      { en: 'The book that I like is gone.', zh: '我喜欢的那本书不见了。', highlight: ['that'] },
+      { en: 'The car which is red is mine.', zh: '那辆红色的车是我的。', highlight: ['which'] },
+      { en: 'The man who called you is here.', zh: '给你打电话的男人在这。' },
+      { en: 'The cake that she made is delicious.', zh: '她做的蛋糕很好吃。' },
+    ],
+    hint: 'who 指人；which 指物；that 都能指。',
+    formula: {
+      rule: 'who 修饰人；which 修饰物；that 修饰人或物（都行）',
+      detail: '定语从句紧跟所修饰的名词。从句缺什么成分（主/宾），关系词就充当什么。',
+    },
+    exercises: [
+      { type: 'choice', question: 'The girl ___ sings well is Lily.', options: ['who', 'which'], answer: 'who' },
+      { type: 'choice', question: 'The book ___ I bought is good.', options: ['who', 'that'], answer: 'that' },
+      { type: 'choice', question: 'The dog ___ is barking is mine.', options: ['who', 'which'], answer: 'which' },
+      { type: 'choice', question: '指人用？', options: ['who', 'which'], answer: 'who' },
+      { type: 'choice', question: 'The man ___ helped me is kind.', options: ['who', 'which'], answer: 'who' },
+    ],
+  },
+  {
+    id: 'l25-review',
+    index: 25,
+    title: '综合应用',
+    subtitle: '把所有积木拼起来',
+    scene: '现在你已经认识了 be 动词、时态、连词、从句——能写一段简单的英语自我介绍了！',
+    examples: [
+      { en: "Hi, I'm Xiao Ming.", zh: '你好，我是小明。' },
+      { en: 'I am a student who loves English.', zh: '我是一个喜欢英语的学生。' },
+      { en: 'I have studied for 3 months.', zh: '我已经学了 3 个月了。' },
+      { en: 'If I work hard, I will speak well.', zh: '如果我努力，我会说得很好。' },
+      { en: 'Thank you for reading!', zh: '感谢你的阅读！' },
+    ],
+    hint: '识别每个句子用的语法点。',
+    formula: {
+      rule: '英语 = 主语 + 谓语 + 其他。先搞清"谁、做什么、什么时候"',
+      detail: '继续到 词汇 + 例句 + 输出 中操练，你已经入门了！',
+    },
+    exercises: [
+      { type: 'choice', question: 'I ___ a student.', options: ['am', 'is'], answer: 'am' },
+      { type: 'choice', question: 'She ___ English every day.', options: ['study', 'studies'], answer: 'studies' },
+      { type: 'choice', question: 'I ___ finished my work.', options: ['have', 'has'], answer: 'have' },
+      { type: 'choice', question: 'If it rains, I ___ stay.', options: ['will', 'do'], answer: 'will' },
+      { type: 'choice', question: 'The book ___ I read is great.', options: ['that', 'who'], answer: 'that' },
+    ],
+  },
+];
