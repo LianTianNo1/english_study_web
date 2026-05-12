@@ -7,12 +7,17 @@
     color-scheme: light;
     --paper-grain-opacity: 0.5;
   }
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
   html, body, #root { height: 100%; }
   body {
     font-family: 'DM Sans', system-ui, sans-serif;
     font-feature-settings: 'ss01', 'cv11';
     background-color: #FBF7F0;
+    overscroll-behavior-y: none;
     /* 纸张噪点底层 */
     background-image:
       url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0.035 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
@@ -56,16 +61,16 @@
     @apply inline-grid h-9 w-9 place-items-center rounded-full border border-paper3 bg-paper text-ink2 transition-all hover:border-ink hover:text-ink;
   }
 
-  /* 纸卡 */
+  /* 纸卡 —— 移动端自动收紧 padding */
   .paper-card {
-    @apply relative rounded-lg border border-paper3 bg-paper p-6;
+    @apply relative rounded-lg border border-paper3 bg-paper p-4 sm:p-6;
     background-image:
       linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,0)),
       url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
     box-shadow: 0 1px 0 rgba(26,22,20,0.04), 0 16px 36px -22px rgba(26,22,20,0.18);
   }
   .paper-card-dark {
-    @apply relative rounded-lg p-6 text-paper;
+    @apply relative rounded-lg p-4 sm:p-6 text-paper;
     background-color: #1A1614;
     background-image:
       url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 0.97 0 0 0 0 0.94 0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
@@ -244,23 +249,30 @@
   animation: caret-blink 1s steps(1) infinite;
 }
 
-/* 大方格输入单元格 */
+/* 大方格输入单元格（移动端尺寸 + 桌面端尺寸） */
 .typing-cell {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.6rem;
-  height: 3rem;
+  width: 1.9rem;
+  height: 2.4rem;
   border-bottom: 3px solid #A89B8E;
   background-color: transparent;
   font-family: 'Fraunces', Georgia, serif;
   font-weight: 700;
-  font-size: 1.75rem;
+  font-size: 1.3rem;
   line-height: 1;
   color: #1A1614;
   transition: border-color 0.15s, background-color 0.15s;
   border-radius: 2px;
+}
+@media (min-width: 640px) {
+  .typing-cell {
+    width: 2.6rem;
+    height: 3rem;
+    font-size: 1.75rem;
+  }
 }
 .typing-cell--filled { border-bottom-color: #1A1614; }
 .typing-cell--active {
@@ -268,8 +280,11 @@
   animation: ink-flash 0.45s ease-out;
 }
 .typing-cell--space {
-  width: 1rem;
+  width: 0.7rem;
   border-bottom-color: transparent;
+}
+@media (min-width: 640px) {
+  .typing-cell--space { width: 1rem; }
 }
 .typing-cell--correct { animation: cell-flip-correct 0.5s ease-out both; }
 .typing-cell--wrong { color: #A8362B; animation: cell-shake 0.5s; }

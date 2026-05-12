@@ -17,12 +17,11 @@ export interface BackupV1 {
 const APP_VERSION = '0.4.0';
 
 /* ---------- 敏感字段脱敏 ---------- */
-const SENSITIVE_SETTING_KEYS = new Set(['ai']); // ai 配置含 apiKey
-
-function sanitizeSettings(settings: SettingsRecord[]): SettingsRecord[] {
+function sanitizeSettings(settings: SettingsRecord[], includeAIConfig: boolean): SettingsRecord[] {
   return settings.map((s) => {
-    if (!SENSITIVE_SETTING_KEYS.has(s.key)) return s;
-    if (s.key === 'ai' && s.value && typeof s.value === 'object') {
+    if (s.key !== 'ai') return s;
+    if (includeAIConfig) return s; // 用户主动选择含 AI 配置时保留完整 apiKey
+    if (s.value && typeof s.value === 'object') {
       const v = s.value as Record<string, unknown>;
       return { key: s.key, value: { ...v, apiKey: '' } };
     }
@@ -34,11 +33,12 @@ function sanitizeSettings(settings: SettingsRecord[]): SettingsRecord[] {
 export interface ExportOptions {
   includeSettings?: boolean;
   includeSessions?: boolean;
-  includeWords?: boolean;  // 默认 false —— 体积可达 30+ MB
+  includeWords?: boolean;   // 默认 false —— 体积可达 30+ MB
+  includeAIConfig?: boolean; // 默认 false —— 含 apiKey，需用户主动勾选
 }
 
 export async function buildBackup(opts: ExportOptions = {}): Promise<BackupV1> {
-  const { includeSettings = true, includeSessions = true, includeWords = false } = opts;
+  const { includeSettings = true, includeSessions = true, includeWords = false, includeAIConfig = false } = opts;
   const [progress, sessions, grammarProgress, settings, mnemonics, words] = await Promise.all([
     db.progress.toArray(),
     includeSessions ? db.sessions.toArray() : Promise.resolve([]),
@@ -54,7 +54,7 @@ export async function buildBackup(opts: ExportOptions = {}): Promise<BackupV1> {
     progress,
     sessions,
     grammarProgress,
-    settings: sanitizeSettings(settings),
+    settings: sanitizeSettings(settings, includeAIConfig),
     mnemonics,
     ...(words ? { words } : {}),
   };
@@ -75,6 +75,12 @@ export function downloadBackup(backup: BackupV1, filename?: string) {
 
 /* ---------- 导入 ---------- */
 export type ImportStrategy = 'merge' | 'replace';
+
+export interface ImportOptions {
+  strategy: ImportStrategy;
+  /** 是否写入备份中的 AI 配置（含 apiKey），默认 false */
+  applyAIConfig?: boolean;
+}
 
 export interface ImportReport {
   progress: number;
@@ -107,7 +113,12 @@ export function parseBackup(text: string): BackupV1 {
   return j as BackupV1;
 }
 
-export async function applyBackup(backup: BackupV1, strategy: ImportStrategy): Promise<ImportReport> {
+export async function applyBackup(backup: BackupV1, optsOrStrategy: ImportOptions | ImportStrategy): Promise<ImportReport> {
+  // 兼容旧调用签名（直接传 strategy 字符串）
+  const opts: ImportOptions = typeof optsOrStrategy === 'string'
+    ? { strategy: optsOrStrategy }
+    : optsOrStrategy;
+  const { strategy, applyAIConfig = false } = opts;
   const report: ImportReport = {
     progress: 0,
     sessions: 0,
@@ -181,13 +192,20 @@ export async function applyBackup(backup: BackupV1, strategy: ImportStrategy): P
       report.mnemonics++;
     }
 
-    // settings: 不覆盖敏感配置，且 apiKey 为空字符串时跳过（避免清空已有 key）
+    // settings: ai 配置需用户在导入时主动勾选才写入
     for (const s of backup.settings ?? []) {
-      if (s.key === 'ai' && s.value && typeof s.value === 'object') {
-        const incoming = s.value as Record<string, unknown>;
-        if (!incoming.apiKey || incoming.apiKey === '') {
-          report.skippedSettings.push('ai (备份中无 apiKey)');
+      if (s.key === 'ai') {
+        if (!applyAIConfig) {
+          report.skippedSettings.push('ai (未勾选"导入 AI 配置")');
           continue;
+        }
+        // 勾选后仍跳过 apiKey 为空的情况（防止覆盖已有 key）
+        if (s.value && typeof s.value === 'object') {
+          const incoming = s.value as Record<string, unknown>;
+          if (!incoming.apiKey || incoming.apiKey === '') {
+            report.skippedSettings.push('ai (备份中无 apiKey)');
+            continue;
+          }
         }
       }
       await db.settings.put(s);

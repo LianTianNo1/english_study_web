@@ -61,11 +61,11 @@ export function Onboarding() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
       <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">
         chapter zero · welcome
       </div>
-      <h1 className="mt-4 font-display text-5xl font-black leading-none tracking-tight md:text-6xl">
+      <h1 className="mt-4 font-display text-4xl font-black leading-none tracking-tight sm:text-5xl md:text-6xl">
         Begin <span className="doodle-underline italic text-persimmon">here</span>.
       </h1>
       <p className="mt-6 max-w-xl text-pretty text-ink2">
@@ -120,11 +120,11 @@ export function Onboarding() {
         })}
       </div>
 
-      <div className="mt-10 flex items-center justify-between">
+      <div className="mt-10 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink3">
           total · {total.toLocaleString()} words · offline-first
         </p>
-        <button onClick={startImport} disabled={selected.size === 0 || running} className="btn-accent">
+        <button onClick={startImport} disabled={selected.size === 0 || running} className="btn-accent w-full justify-center sm:w-auto">
           {running ? '正在导入…' : '开始导入'} <ArrowRight size={16} />
         </button>
       </div>

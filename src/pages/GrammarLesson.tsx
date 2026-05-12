@@ -203,10 +203,10 @@ export function GrammarLesson() {
         </div>
       </div>
 
-      <div className="flex items-end gap-4">
-        <div className="chapter-num text-7xl">{String(lesson.index).padStart(2, '0')}</div>
-        <div>
-          <h1 className="font-display text-4xl font-black leading-none tracking-tight text-ink">{lesson.title}</h1>
+      <div className="flex items-end gap-3 sm:gap-4">
+        <div className="chapter-num text-5xl sm:text-7xl">{String(lesson.index).padStart(2, '0')}</div>
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl sm:text-4xl font-black leading-none tracking-tight text-ink break-words">{lesson.title}</h1>
           <p className="mt-1 text-sm italic text-ink3">{lesson.subtitle}</p>
         </div>
       </div>

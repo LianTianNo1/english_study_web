@@ -144,7 +144,7 @@ export function Mistakes() {
     <div className="space-y-6">
       <div>
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 02b · focus</div>
-        <h1 className="mt-2 font-display text-5xl font-black tracking-tight md:text-6xl">
+        <h1 className="mt-2 font-display text-4xl font-black tracking-tight sm:text-5xl md:text-6xl">
           The <span className="italic text-crimson">Mistakes</span>
         </h1>
         <p className="mt-3 max-w-2xl text-pretty text-ink2">
@@ -152,12 +152,12 @@ export function Mistakes() {
         </p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <TabBtn active={tab === 'wrong'} onClick={() => setTab('wrong')} label="错题本" count={tab === 'wrong' ? items.length : null} />
         <TabBtn active={tab === 'starred'} onClick={() => setTab('starred')} label="难词收藏" count={tab === 'starred' ? items.length : null} />
-        <div className="ml-auto">
+        <div className="w-full sm:ml-auto sm:w-auto">
           {items.length > 0 && (
-            <button onClick={startPractice} className="btn-accent">
+            <button onClick={startPractice} className="btn-accent w-full sm:w-auto">
               <RotateCw size={14} /> 开始专攻（{items.length}）
             </button>
           )}
@@ -175,7 +175,7 @@ export function Mistakes() {
           {items.map(({ progress, word }) => {
             const lvlName = LEVELS.find((l) => l.id === word.levelId)?.name;
             return (
-              <li key={word.id} className="flex items-center gap-4 rounded-md border border-paper3 bg-paper p-4">
+              <li key={word.id} className="flex items-center gap-3 rounded-md border border-paper3 bg-paper p-3 sm:gap-4 sm:p-4">
                 <button onClick={() => speak(word.word)} className="btn-icon shrink-0">
                   <Volume2 size={14} />
                 </button>

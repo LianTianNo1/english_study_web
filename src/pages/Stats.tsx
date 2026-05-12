@@ -62,12 +62,12 @@ export function Stats() {
     <div className="space-y-12">
       <header>
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 05 · ledger</div>
-        <h1 className="mt-2 font-display text-5xl font-black tracking-tight md:text-6xl">
+        <h1 className="mt-2 font-display text-4xl font-black tracking-tight sm:text-5xl md:text-6xl">
           The <span className="italic text-persimmon">Ledger</span>
         </h1>
       </header>
 
-      <section className="grid gap-px overflow-hidden rounded-md border border-paper3 bg-paper3 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-paper3 bg-paper3 md:grid-cols-4">
         <BigCell label="streak" zh="连续打卡" value={streak} unit="days" tone />
         <BigCell label="today new" zh="今日新词" value={today.learn} unit="words" />
         <BigCell label="today review" zh="今日复习" value={today.review} unit="words" />
@@ -140,12 +140,12 @@ export function Stats() {
 
 function BigCell({ label, zh, value, unit, tone }: { label: string; zh: string; value: number; unit: string; tone?: boolean }) {
   return (
-    <div className={cn('p-6', tone ? 'bg-ink text-paper' : 'bg-paper text-ink')}>
+    <div className={cn('p-4 sm:p-6', tone ? 'bg-ink text-paper' : 'bg-paper text-ink')}>
       <div className={cn('font-mono text-[10px] uppercase tracking-[0.25em]', tone ? 'text-paper/60' : 'text-ink3')}>
         {label} · {zh}
       </div>
       <div className="mt-3 flex items-baseline gap-1.5">
-        <span className="font-display text-5xl font-black tracking-tight">{value}</span>
+        <span className="font-display text-3xl sm:text-5xl font-black tracking-tight">{value}</span>
         <span className={cn('font-mono text-xs', tone ? 'text-paper/60' : 'text-ink3')}>{unit}</span>
       </div>
     </div>

@@ -38,7 +38,7 @@ export function Grammar() {
     <div className="space-y-10">
       <section>
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 03 · grammar</div>
-        <h1 className="mt-2 font-display text-5xl font-black tracking-tight md:text-6xl">
+        <h1 className="mt-2 font-display text-4xl font-black tracking-tight sm:text-5xl md:text-6xl">
           The <span className="italic text-indigo2-500">Pathway</span>
         </h1>
         <p className="mt-4 max-w-2xl text-pretty text-ink2">
@@ -63,7 +63,7 @@ export function Grammar() {
               to={st === 'locked' ? '#' : `/grammar/${l.id}`}
               onClick={(e) => st === 'locked' && e.preventDefault()}
               className={cn(
-                'group relative flex flex-col gap-3 overflow-hidden rounded-lg border bg-paper p-5 transition-all',
+                'group relative flex flex-col gap-2 overflow-hidden rounded-lg border bg-paper p-4 sm:gap-3 sm:p-5 transition-all',
                 st === 'locked' && 'cursor-not-allowed opacity-50',
                 st !== 'locked' && 'hover:-translate-y-1 hover:border-ink',
                 st === 'completed' && 'border-moss bg-moss-50/40',

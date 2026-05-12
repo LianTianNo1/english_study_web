@@ -25,7 +25,9 @@ export function Settings() {
   const [includeSessions, setIncludeSessions] = useState(true);
   const [includeSettingsInExport, setIncludeSettingsInExport] = useState(true);
   const [includeWords, setIncludeWords] = useState(false);
+  const [includeAIConfig, setIncludeAIConfig] = useState(false);
   const [importStrategy, setImportStrategy] = useState<ImportStrategy>('merge');
+  const [importAIConfig, setImportAIConfig] = useState(false);
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [importError, setImportError] = useState('');
   const [importing2, setImporting2] = useState(false);
@@ -59,6 +61,7 @@ export function Settings() {
       includeSettings: includeSettingsInExport,
       includeSessions,
       includeWords,
+      includeAIConfig,
     });
     downloadBackup(bk);
   }
@@ -74,7 +77,7 @@ export function Settings() {
         setImporting2(false);
         return;
       }
-      const report = await applyBackup(backup, importStrategy);
+      const report = await applyBackup(backup, { strategy: importStrategy, applyAIConfig: importAIConfig });
       setImportReport(report);
       // 重载设置（备份可能更改了用户偏好）
       await useSettings.getState().load();
@@ -111,7 +114,7 @@ export function Settings() {
       <div className="space-y-12">
         <header>
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 06 · preferences</div>
-          <h1 className="mt-2 font-display text-5xl font-black tracking-tight">设置</h1>
+          <h1 className="mt-2 font-display text-4xl sm:text-5xl font-black tracking-tight">设置</h1>
         </header>
 
       {/* 学习偏好 */}
@@ -382,6 +385,7 @@ export function Settings() {
               <Checkbox checked={includeSessions} onChange={setIncludeSessions} label="包含会话记录（热力图）" />
               <Checkbox checked={includeSettingsInExport} onChange={setIncludeSettingsInExport} label="包含设置偏好" />
               <Checkbox checked={includeWords} onChange={setIncludeWords} label="包含词库本体 (大 ⚠)" />
+              <Checkbox checked={includeAIConfig} onChange={setIncludeAIConfig} label="含 AI 配置（含 API Key ⚠）" />
             </div>
             <button onClick={exportBackup} className="btn-ghost">
               <Download size={14} /> 导出 JSON
@@ -391,7 +395,7 @@ export function Settings() {
               <span>
                 默认只含 <b>学习进度 / 错题 / 难词 / 语法关卡 / AI 巧记 / 偏好</b>，体积约 100 KB。
                 勾选"词库本体"会额外打包已导入的词条（含全部释义和短语），换设备时可省去 5 分钟重新导入，
-                但单文件可达 <b>30+ MB</b>。<b>不导出 API Key</b>，换设备后需重填。
+                但单文件可达 <b>30+ MB</b>。勾选"含 AI 配置"时 <b>API Key 会明文写入文件</b>，请妥善保管。
               </span>
             </div>
           </div>
@@ -417,6 +421,7 @@ export function Settings() {
                 {importStrategy === 'merge' ? '保留现有数据，按 wordId/lessonId 去重更新' : '清空后再导入（无法恢复）'}
               </span>
             </div>
+            <Checkbox checked={importAIConfig} onChange={setImportAIConfig} label="导入 AI 配置（含 API Key）" />
             <label className="btn-ghost cursor-pointer w-fit">
               {importing2 ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               选择 JSON 文件

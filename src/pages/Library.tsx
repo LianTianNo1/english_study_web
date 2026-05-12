@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { LEVELS, type LevelId, type WordRecord } from '@/db/types';
 import { wordsRepo } from '@/db/repositories/words';
-import { Search, Volume2 } from 'lucide-react';
+import { ArrowLeft, Search, Volume2 } from 'lucide-react';
 import { speak } from '@/lib/tts';
 import { cn } from '@/lib/utils';
 import { AIPanel } from '@/components/AIPanel';
@@ -76,7 +76,7 @@ export function Library() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_380px]">
-        <div className="paper-card !p-0">
+        <div className={cn('paper-card !p-0', selected && 'hidden md:block')}>
           <div className="flex items-center gap-2 border-b border-paper3 px-4 py-3">
             <Search size={16} className="text-ink3" />
             <input
@@ -110,9 +110,21 @@ export function Library() {
           </div>
         </div>
 
-        <aside className="paper-card overflow-y-auto" style={{ maxHeight: 'calc(62vh + 56px)' }}>
+        <aside
+          className={cn(
+            'paper-card overflow-y-auto',
+            !selected && 'hidden md:block'
+          )}
+          style={{ maxHeight: 'calc(62vh + 56px)' }}
+        >
           {selected ? (
             <div>
+              <button
+                onClick={() => setSelected(null)}
+                className="mb-3 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-ink3 hover:text-ink md:hidden"
+              >
+                <ArrowLeft size={12} /> back to list
+              </button>
               <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
                 entry · {String(selected.orderIndex + 1).padStart(4, '0')} / {LEVELS.find((l) => l.id === selected.levelId)?.name}
               </div>

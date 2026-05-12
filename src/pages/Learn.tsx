@@ -340,9 +340,9 @@ export function Learn() {
         )}
 
         <div className="paper-card animate-fade-up">
-          <div className="flex items-baseline justify-between gap-3">
-            <div className="flex items-baseline gap-3">
-              <h3 className="font-display text-5xl font-black tracking-tight text-ink">{w.word}</h3>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div className="flex items-baseline gap-2 sm:gap-3 min-w-0">
+              <h3 className="font-display text-3xl sm:text-5xl font-black tracking-tight text-ink break-words">{w.word}</h3>
               <button onClick={() => speak(w.word)} className="btn-icon" title="朗读 (Space)">
                 <Volume2 size={14} />
               </button>
@@ -395,11 +395,11 @@ export function Learn() {
           )}
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <button onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))} disabled={previewIdx === 0} className="btn-ghost">
             ← 上一个
           </button>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-ink3">
+          <span className="hidden flex-1 text-center font-mono text-[10px] uppercase tracking-wider text-ink3 md:inline">
             ← → 翻页 · space 朗读 · s 收藏 · ↵ 下一个/开始
           </span>
           {previewIdx < newWords.length - 1 ? (

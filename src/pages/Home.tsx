@@ -52,7 +52,7 @@ export function Home() {
           <span>vol. 01 · {dateStr}</span>
           <span>focus / {meta.name}</span>
         </div>
-        <h1 className="mt-6 font-display text-5xl font-black leading-none tracking-tight text-ink sm:text-6xl md:text-7xl">
+        <h1 className="mt-6 font-display text-4xl font-black leading-none tracking-tight text-ink sm:text-6xl md:text-7xl">
           Today, you learn{' '}
           <span className="doodle-underline italic text-persimmon">{remaining}</span>{' '}
           new words.
@@ -63,7 +63,7 @@ export function Home() {
       </section>
 
       {/* Today's columns */}
-      <section className="grid gap-6 md:grid-cols-3">
+      <section className="grid gap-3 sm:gap-6 sm:grid-cols-3">
         <PrimaryAction
           to="/learn"
           number="01"
@@ -175,7 +175,7 @@ function PrimaryAction({
   return (
     <Link
       to={to}
-      className={`group relative flex h-44 flex-col justify-between overflow-hidden rounded-lg p-5 transition-all duration-300 hover:-translate-y-1 ${styles}`}
+      className={`group relative flex h-32 sm:h-44 flex-col justify-between overflow-hidden rounded-lg p-4 sm:p-5 transition-all duration-300 hover:-translate-y-1 ${styles}`}
     >
       <div className="flex items-start justify-between">
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] opacity-70">{en} · {number}</span>
@@ -191,10 +191,10 @@ function PrimaryAction({
 
 function StatCell({ label, zh, value, unit }: { label: string; zh: string; value: number; unit: string }) {
   return (
-    <div className="bg-paper p-5">
+    <div className="bg-paper p-3 sm:p-5">
       <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">{label} · {zh}</div>
       <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="font-display text-4xl font-black tracking-tight text-ink">{value}</span>
+        <span className="font-display text-2xl sm:text-4xl font-black tracking-tight text-ink">{value}</span>
         <span className="font-mono text-xs text-ink3">{unit}</span>
       </div>
     </div>

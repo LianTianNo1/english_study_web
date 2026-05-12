@@ -122,7 +122,7 @@ export function Review() {
 
       <div className="paper-card animate-fade-up text-center">
         <div className="flex items-baseline justify-center gap-2">
-          <h3 className="font-display text-5xl font-black tracking-tight text-ink md:text-6xl">{current.word.word}</h3>
+          <h3 className="font-display text-4xl font-black tracking-tight text-ink sm:text-5xl md:text-6xl break-words max-w-full">{current.word.word}</h3>
           <button onClick={() => speak(current.word.word)} className="btn-icon" title="朗读">
             <Volume2 size={14} />
           </button>

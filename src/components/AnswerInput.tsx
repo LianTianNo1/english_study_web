@@ -204,6 +204,8 @@ function CellsMode({ answer, onSubmit, revealed, onContinue, hint, autoFocus = t
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
+          inputMode="text"
+          enterKeyHint="done"
           disabled={!!revealed}
           className={cn(
             'absolute inset-0 z-0 h-full w-full cursor-text opacity-0',
@@ -211,7 +213,7 @@ function CellsMode({ answer, onSubmit, revealed, onContinue, hint, autoFocus = t
           )}
           aria-label="answer"
         />
-        <div className="relative z-10 flex flex-wrap items-end justify-center gap-1.5 px-4 py-6">
+        <div className="typing-pad relative z-10 flex flex-wrap items-end justify-center gap-1 px-2 py-5 sm:gap-1.5 sm:px-4 sm:py-6">
           {cells}
           {revealed && revealed.correct && <div className="stamp">APPROVED</div>}
         </div>
@@ -350,8 +352,10 @@ function FreeMode({ answer, onSubmit, revealed, onContinue, hint, placeholder, a
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
+          inputMode="text"
+          enterKeyHint="done"
           className={cn(
-            'w-full bg-transparent text-center font-display text-2xl font-semibold tracking-tight text-ink outline-none transition-colors placeholder:text-muted placeholder:font-sans placeholder:text-base placeholder:font-normal placeholder:italic',
+            'w-full bg-transparent text-center font-display text-xl sm:text-2xl font-semibold tracking-tight text-ink outline-none transition-colors placeholder:text-muted placeholder:font-sans placeholder:text-sm sm:placeholder:text-base placeholder:font-normal placeholder:italic',
             'border-b-2 pb-3',
             revealed?.correct && 'border-moss text-moss-700',
             revealed && !revealed.correct && 'border-crimson text-crimson',
