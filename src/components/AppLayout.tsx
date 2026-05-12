@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { isAnyImported } from '@/db/importer';
 import { useSettings } from '@/stores/settingsStore';
 import { cn } from '@/lib/utils';
+import { setSfxEnabled } from '@/lib/sfx';
 
 const NAV = [
   { to: '/', label: '今日', code: '00', end: true },
@@ -20,6 +21,7 @@ export function AppLayout() {
   const location = useLocation();
   const [ready, setReady] = useState(false);
   const load = useSettings((s) => s.load);
+  const sfxEnabled = useSettings((s) => s.sfxEnabled);
 
   useEffect(() => {
     (async () => {
@@ -29,6 +31,11 @@ export function AppLayout() {
       setReady(true);
     })();
   }, [navigate, load]);
+
+  // 同步音效开关到底层模块
+  useEffect(() => {
+    setSfxEnabled(sfxEnabled);
+  }, [sfxEnabled]);
 
   if (!ready) {
     return (

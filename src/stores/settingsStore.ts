@@ -49,6 +49,7 @@ interface SettingsState {
   dailyNewWords: number;
   dailyReviewLimit: number;
   learnOrder: LearnOrder;
+  sfxEnabled: boolean;
   tts: TTSConfig;
   ai: AIConfig;
   loaded: boolean;
@@ -57,6 +58,7 @@ interface SettingsState {
   setDailyNewWords: (n: number) => Promise<void>;
   setDailyReviewLimit: (n: number) => Promise<void>;
   setLearnOrder: (o: LearnOrder) => Promise<void>;
+  setSfxEnabled: (b: boolean) => Promise<void>;
   setTTS: (cfg: Partial<TTSConfig>) => Promise<void>;
   setAI: (cfg: Partial<AIConfig>) => Promise<void>;
 }
@@ -66,15 +68,17 @@ export const useSettings = create<SettingsState>((set, get) => ({
   dailyNewWords: 20,
   dailyReviewLimit: 100,
   learnOrder: 'sequential',
+  sfxEnabled: false,
   tts: DEFAULT_TTS,
   ai: DEFAULT_AI,
   loaded: false,
   async load() {
-    const [lvl, dnw, drl, order, tts, ai] = await Promise.all([
+    const [lvl, dnw, drl, order, sfx, tts, ai] = await Promise.all([
       getSetting<LevelId>('activeLevel', 'junior'),
       getSetting<number>('dailyNewWords', 20),
       getSetting<number>('dailyReviewLimit', 100),
       getSetting<LearnOrder>('learnOrder', 'sequential'),
+      getSetting<boolean>('sfxEnabled', false),
       getSetting<TTSConfig>('tts', DEFAULT_TTS),
       getSetting<AIConfig>('ai', DEFAULT_AI),
     ]);
@@ -83,6 +87,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
       dailyNewWords: dnw,
       dailyReviewLimit: drl,
       learnOrder: order,
+      sfxEnabled: sfx,
       tts: { ...DEFAULT_TTS, ...tts },
       ai: { ...DEFAULT_AI, ...ai },
       loaded: true,
@@ -103,6 +108,10 @@ export const useSettings = create<SettingsState>((set, get) => ({
   async setLearnOrder(o) {
     await setSetting('learnOrder', o);
     set({ learnOrder: o });
+  },
+  async setSfxEnabled(b) {
+    await setSetting('sfxEnabled', b);
+    set({ sfxEnabled: b });
   },
   async setTTS(cfg) {
     const next = { ...get().tts, ...cfg };

@@ -156,3 +156,158 @@
   .text-balance { text-wrap: balance; }
   .text-pretty { text-wrap: pretty; }
 }
+
+/* ============= TypewriterPad 动效 ============= */
+
+@keyframes caret-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+@keyframes char-pop {
+  0%   { transform: translateY(8px) scale(0.6); opacity: 0; filter: blur(2px); }
+  60%  { transform: translateY(-2px) scale(1.12); opacity: 1; filter: blur(0); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes key-ripple {
+  0%   { transform: scale(0.4); opacity: 0.55; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+@keyframes cell-flip-correct {
+  0%   { transform: rotateX(0deg); background-color: #FBF7F0; }
+  50%  { transform: rotateX(90deg); background-color: #FBF7F0; }
+  51%  { background-color: #E8EDE3; }   /* moss-50 */
+  100% { transform: rotateX(0deg); background-color: #E8EDE3; }
+}
+
+@keyframes cell-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-5px) rotate(-1deg); }
+  30% { transform: translateX(5px) rotate(1deg); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-1px); }
+}
+
+@keyframes stamp-in {
+  0%   { transform: translate(-50%, -50%) rotate(-25deg) scale(0); opacity: 0; }
+  60%  { transform: translate(-50%, -50%) rotate(-12deg) scale(1.2); opacity: 1; }
+  80%  { transform: translate(-50%, -50%) rotate(-8deg) scale(0.95); }
+  100% { transform: translate(-50%, -50%) rotate(-8deg) scale(1); opacity: 1; }
+}
+
+@keyframes ghost-letter {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 0.85; transform: translateY(0); }
+}
+
+@keyframes ink-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(217, 80, 31, 0.55); }
+  100% { box-shadow: 0 0 0 12px rgba(217, 80, 31, 0); }
+}
+
+@keyframes pad-celebrate {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+
+.pad-celebrate { animation: pad-celebrate 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+.caret-blink::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 2px;
+  background: currentColor;
+  vertical-align: middle;
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+/* 大方格输入单元格 */
+.typing-cell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 3rem;
+  border-bottom: 3px solid #A89B8E;
+  background-color: transparent;
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.75rem;
+  line-height: 1;
+  color: #1A1614;
+  transition: border-color 0.15s, background-color 0.15s;
+  border-radius: 2px;
+}
+.typing-cell--filled { border-bottom-color: #1A1614; }
+.typing-cell--active {
+  border-bottom-color: #D9501F;
+  animation: ink-flash 0.45s ease-out;
+}
+.typing-cell--space {
+  width: 1rem;
+  border-bottom-color: transparent;
+}
+.typing-cell--correct { animation: cell-flip-correct 0.5s ease-out both; }
+.typing-cell--wrong { color: #A8362B; animation: cell-shake 0.5s; }
+
+/* 涟漪 */
+.key-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(217, 80, 31, 0.45) 0%, rgba(217, 80, 31, 0) 70%);
+  animation: key-ripple 0.55s ease-out forwards;
+}
+
+/* 印章 APPROVED */
+.stamp {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  font-size: 1.5rem;
+  padding: 0.4rem 1.2rem;
+  border: 3px double currentColor;
+  color: #5B7F4C;
+  opacity: 0.92;
+  animation: stamp-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.5 0 0 0 0 0.3 0 0 0 0.2 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+.stamp--wrong {
+  color: #A8362B;
+}
+
+/* 幽灵字（揭晓正确字符） */
+.ghost-letter {
+  display: inline-block;
+  color: #D9501F;
+  opacity: 0;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  animation: ghost-letter 0.4s ease-out forwards;
+}
+
+/* 句子模式 ripple */
+.pad-keyspark {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(217, 80, 31, 0.35), rgba(217, 80, 31, 0));
+  animation: key-ripple 0.5s ease-out forwards;
+  transform-origin: center;
+}

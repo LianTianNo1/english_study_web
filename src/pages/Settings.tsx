@@ -11,8 +11,8 @@ import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportRepor
 
 export function Settings() {
   const {
-    activeLevel, dailyNewWords, dailyReviewLimit, learnOrder, tts, ai,
-    setActiveLevel, setDailyNewWords, setDailyReviewLimit, setLearnOrder, setTTS, setAI, loaded,
+    activeLevel, dailyNewWords, dailyReviewLimit, learnOrder, sfxEnabled, tts, ai,
+    setActiveLevel, setDailyNewWords, setDailyReviewLimit, setLearnOrder, setSfxEnabled, setTTS, setAI, loaded,
   } = useSettings();
 
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -141,6 +141,15 @@ export function Settings() {
           <NumField label="每日新词目标" value={dailyNewWords} onChange={setDailyNewWords} min={5} max={100} />
           <NumField label="每日复习上限" value={dailyReviewLimit} onChange={setDailyReviewLimit} min={10} max={500} />
         </div>
+
+        <Field label="打字机音效" hint="拼写/填空/翻译时键击发出复古打字声，答对一串上行音，答错一声闷响">
+          <div className="flex items-center gap-3">
+            <Toggle on={sfxEnabled} onChange={setSfxEnabled} />
+            <span className="font-mono text-[10px] uppercase tracking-wider text-ink3">
+              {sfxEnabled ? 'on · clicky' : 'off · silent'}
+            </span>
+          </div>
+        </Field>
       </Section>
 
       {/* TTS */}

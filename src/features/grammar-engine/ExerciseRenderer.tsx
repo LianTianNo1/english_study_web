@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, XCircle, Lightbulb } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { cn, shuffle } from '@/lib/utils';
 import type { GrammarExercise } from '@/data/grammar-lessons';
+import { AnswerInput } from '@/components/AnswerInput';
 
 interface Props {
   exercise: GrammarExercise;
@@ -67,23 +68,20 @@ function ChoiceView({ exercise, revealed, onSubmit }: Props) {
 
 /* ---------- 填空 ---------- */
 function FillBlankView({ exercise, revealed, onSubmit }: Props) {
-  const [text, setText] = useState('');
   return (
     <div>
       <Question text={exercise.question} />
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!revealed && text.trim()) onSubmit(text, check(text, exercise.answer));
-        }}
-        className="flex gap-2"
-      >
-        <input className="input font-mono" value={text} onChange={(e) => setText(e.target.value)} disabled={!!revealed} autoFocus placeholder="输入答案" />
-        {!revealed && (
-          <button type="submit" disabled={!text.trim()} className="btn-accent">提交</button>
-        )}
-      </form>
-      <Feedback exercise={exercise} revealed={revealed} />
+      <AnswerInput
+        answer={exercise.answer}
+        revealed={revealed}
+        onSubmit={(v, ok) => onSubmit(v, ok)}
+        autoFocus
+      />
+      {exercise.explain && revealed && (
+        <div className="mt-3 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
+          <b className="text-ink2">解析：</b>{exercise.explain}
+        </div>
+      )}
     </div>
   );
 }
@@ -170,54 +168,48 @@ function ReorderView({ exercise, revealed, onSubmit }: Props) {
 
 /* ---------- 中→英翻译 ---------- */
 function TranslateView({ exercise, revealed, onSubmit }: Props) {
-  const [text, setText] = useState('');
   return (
     <div>
       <Question text={exercise.question} />
-      {exercise.hint && (
-        <div className="mb-3 flex items-center gap-1.5 rounded-md bg-paper2 px-3 py-2 text-xs text-ink3">
-          <Lightbulb size={12} className="text-persimmon" />
-          关键词：<code className="font-mono">{exercise.hint}</code>
+      <AnswerInput
+        answer={exercise.answer}
+        revealed={revealed}
+        hint={exercise.hint}
+        mode="free"
+        placeholder="用英文写出整句"
+        onSubmit={(v, ok) => onSubmit(v, ok)}
+        autoFocus
+      />
+      {exercise.explain && revealed && (
+        <div className="mt-3 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
+          <b className="text-ink2">解析：</b>{exercise.explain}
         </div>
       )}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!revealed && text.trim()) onSubmit(text, check(text, exercise.answer));
-        }}
-        className="flex gap-2"
-      >
-        <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="用英文写出整句" disabled={!!revealed} autoFocus />
-        {!revealed && <button type="submit" disabled={!text.trim()} className="btn-accent">提交</button>}
-      </form>
-      <Feedback exercise={exercise} revealed={revealed} />
     </div>
   );
 }
 
 /* ---------- 改错 ---------- */
 function CorrectionView({ exercise, revealed, onSubmit }: Props) {
-  const [text, setText] = useState(() => exercise.question.replace(/^.*?(?=[A-Za-z])/, ''));
-  useEffect(() => {
-    setText(exercise.question.replace(/^.*?(?=[A-Za-z])/, '').replace(/\s*（[^）]*）\s*$/, ''));
-  }, [exercise]);
   return (
     <div>
       <Question text="找出并改正错误（修改后输入完整正确句子）：" />
-      <div className="mb-3 rounded-md border border-crimson/40 bg-crimson-50/40 p-3 font-mono text-sm text-crimson">
+      <div className="mb-4 rounded-md border border-crimson/40 bg-crimson-50/40 p-3 font-mono text-sm text-crimson">
         {extractWrongSentence(exercise.question)}
       </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!revealed && text.trim()) onSubmit(text, check(text, exercise.answer));
-        }}
-        className="flex gap-2"
-      >
-        <input className="input" value={text} onChange={(e) => setText(e.target.value)} disabled={!!revealed} autoFocus />
-        {!revealed && <button type="submit" disabled={!text.trim()} className="btn-accent">提交</button>}
-      </form>
-      <Feedback exercise={exercise} revealed={revealed} />
+      <AnswerInput
+        answer={exercise.answer}
+        revealed={revealed}
+        mode="free"
+        placeholder="输入修改后的完整句子"
+        onSubmit={(v, ok) => onSubmit(v, ok)}
+        autoFocus
+      />
+      {exercise.explain && revealed && (
+        <div className="mt-3 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
+          <b className="text-ink2">解析：</b>{exercise.explain}
+        </div>
+      )}
     </div>
   );
 }
