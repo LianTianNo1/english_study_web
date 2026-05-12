@@ -9,6 +9,13 @@ interface Props {
   onSubmit: (answer: string, correct: boolean) => void;
 }
 
+const TYPE_LABEL: Record<Question['type'], string> = {
+  meaning: 'EN → CN · 选释义',
+  word: 'CN → EN · 选单词',
+  spell: 'spelling · 拼写',
+  phrase: 'collocation · 短语',
+};
+
 export function QuizCard({ question: q, onSubmit }: Props) {
   const [answer, setAnswer] = useState('');
   const [revealed, setRevealed] = useState<null | { correct: boolean; chosen: string }>(null);
@@ -23,28 +30,24 @@ export function QuizCard({ question: q, onSubmit }: Props) {
   function check(value: string) {
     const ok = value.trim().toLowerCase() === q.answer.trim().toLowerCase();
     setRevealed({ correct: ok, chosen: value });
-    setTimeout(() => onSubmit(value, ok), 750);
+    setTimeout(() => onSubmit(value, ok), 700);
   }
 
   const isChoice = q.type === 'meaning' || q.type === 'word';
 
   return (
-    <div className="card mx-auto max-w-2xl animate-fade-in">
+    <div className="paper-card mx-auto max-w-2xl animate-fade-up">
       <div className="mb-4 flex items-center justify-between">
-        <span className="tag">{typeLabel(q.type)}</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">{TYPE_LABEL[q.type]}</span>
         {q.type !== 'spell' && (
-          <button
-            onClick={() => speak(q.word.word)}
-            className="grid h-8 w-8 place-items-center rounded-full bg-cream-100 text-ink-600 hover:bg-warm-100 hover:text-warm-600"
-            title="朗读"
-          >
-            <Volume2 size={16} />
+          <button onClick={() => speak(q.word.word)} className="btn-icon !h-8 !w-8">
+            <Volume2 size={14} />
           </button>
         )}
       </div>
 
-      <div className="my-4 text-center">
-        <div className={cn('whitespace-pre-line text-2xl font-bold tracking-tight text-ink-800', q.type === 'word' ? 'text-warm-600' : '')}>
+      <div className="my-6 text-center">
+        <div className={cn('whitespace-pre-line font-display font-black tracking-tight text-ink', q.type === 'word' || q.type === 'spell' ? 'text-2xl md:text-3xl' : 'text-4xl md:text-5xl')}>
           {q.prompt}
         </div>
       </div>
@@ -60,17 +63,15 @@ export function QuizCard({ question: q, onSubmit }: Props) {
                 disabled={!!revealed}
                 onClick={() => check(opt)}
                 className={cn(
-                  'rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-all',
-                  !revealed && 'border-ink-200 bg-white hover:border-warm-400 hover:bg-warm-50',
-                  revealed && isAnswer && 'border-mint-400 bg-emerald-50 text-mint-500',
-                  revealed && chosen && !isAnswer && 'border-red-300 bg-red-50 text-red-500'
+                  'flex items-center justify-between gap-2 rounded-md border px-4 py-3 text-left text-sm font-medium transition-all',
+                  !revealed && 'border-paper3 bg-paper hover:-translate-y-0.5 hover:border-ink hover:bg-paper2',
+                  revealed && isAnswer && 'border-moss bg-moss-50 text-moss-700',
+                  revealed && chosen && !isAnswer && 'border-crimson bg-crimson-50 text-crimson'
                 )}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span>{opt}</span>
-                  {revealed && isAnswer && <CheckCircle2 size={18} />}
-                  {revealed && chosen && !isAnswer && <XCircle size={18} />}
-                </div>
+                <span>{opt}</span>
+                {revealed && isAnswer && <CheckCircle2 size={16} className="text-moss" />}
+                {revealed && chosen && !isAnswer && <XCircle size={16} className="text-crimson" />}
               </button>
             );
           })}
@@ -87,34 +88,32 @@ export function QuizCard({ question: q, onSubmit }: Props) {
         >
           <input
             ref={inputRef}
-            className="input text-center text-lg"
+            className="input text-center font-mono text-lg"
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="输入英文单词"
+            placeholder="type the english word"
             autoComplete="off"
             spellCheck={false}
             disabled={!!revealed}
           />
           {!revealed ? (
-            <button type="submit" disabled={!answer.trim()} className="btn-primary w-full">
+            <button type="submit" disabled={!answer.trim()} className="btn-accent w-full">
               提交
             </button>
           ) : (
             <div
               className={cn(
-                'rounded-2xl px-4 py-3 text-center text-sm font-medium',
-                revealed.correct ? 'bg-emerald-50 text-mint-500' : 'bg-red-50 text-red-500'
+                'rounded-md border px-4 py-3 text-center text-sm',
+                revealed.correct ? 'border-moss bg-moss-50 text-moss-700' : 'border-crimson bg-crimson-50 text-crimson'
               )}
             >
-              {revealed.correct ? '✓ 正确！' : `✗ 正确答案：${q.answer}`}
+              {revealed.correct ? '✓ 正确！' : (
+                <span>✗ 正确答案：<b className="font-mono">{q.answer}</b></span>
+              )}
             </div>
           )}
         </form>
       )}
     </div>
   );
-}
-
-function typeLabel(t: Question['type']) {
-  return { meaning: '选释义', word: '选单词', spell: '拼写', phrase: '短语填空' }[t];
 }

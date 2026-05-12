@@ -1,50 +1,53 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { BookOpen, GraduationCap, Home as HomeIcon, Library as LibIcon, RotateCw, Settings as SettingsIcon, Sparkles, BarChart3 } from 'lucide-react';
 import { isAnyImported } from '@/db/importer';
+import { useSettings } from '@/stores/settingsStore';
 import { cn } from '@/lib/utils';
 
 const NAV = [
-  { to: '/', label: '首页', icon: HomeIcon, end: true },
-  { to: '/learn', label: '学新词', icon: BookOpen },
-  { to: '/review', label: '复习', icon: RotateCw },
-  { to: '/grammar', label: '语法', icon: GraduationCap },
-  { to: '/library', label: '词库', icon: LibIcon },
-  { to: '/stats', label: '统计', icon: BarChart3 },
-  { to: '/settings', label: '设置', icon: SettingsIcon },
+  { to: '/', label: '今日', code: '00', end: true },
+  { to: '/learn', label: '新词', code: '01' },
+  { to: '/review', label: '复习', code: '02' },
+  { to: '/grammar', label: '语法', code: '03' },
+  { to: '/library', label: '词库', code: '04' },
+  { to: '/stats', label: '统计', code: '05' },
+  { to: '/settings', label: '设置', code: '06' },
 ];
 
 export function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [ready, setReady] = useState(false);
+  const load = useSettings((s) => s.load);
 
   useEffect(() => {
     (async () => {
       const has = await isAnyImported();
       if (!has) navigate('/onboarding', { replace: true });
+      await load();
       setReady(true);
     })();
-  }, [navigate]);
+  }, [navigate, load]);
 
   if (!ready) {
     return (
-      <div className="flex h-full items-center justify-center text-ink-400">
-        <Sparkles className="mr-2 animate-pulse" />
-        加载中…
+      <div className="flex h-full items-center justify-center font-mono text-xs uppercase tracking-[0.3em] text-ink3">
+        loading…
       </div>
     );
   }
 
   return (
-    <div className="min-h-full bg-cream-50">
-      <header className="sticky top-0 z-30 border-b border-cream-200 bg-cream-50/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-warm-500 text-lg font-extrabold text-white shadow-soft">E</div>
-            <div className="text-base font-semibold tracking-tight">English Hub</div>
-            <span className="tag ml-1">0 基础友好</span>
+    <div className="min-h-full">
+      <header className="sticky top-0 z-30 border-b border-paper3 bg-paper/85 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
+          <div className="flex items-baseline gap-3">
+            <span className="font-display text-2xl font-black tracking-tight text-ink">English Hub</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">
+              — Private Study Journal
+            </span>
           </div>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center">
             {NAV.map((n) => (
               <NavLink
                 key={n.to}
@@ -52,23 +55,35 @@ export function AppLayout() {
                 end={n.end}
                 className={({ isActive }) =>
                   cn(
-                    'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-warm-500 text-white shadow-soft'
-                      : 'text-ink-600 hover:bg-cream-100'
+                    'group relative flex items-baseline gap-1 px-3 py-2 text-sm transition-colors',
+                    isActive ? 'text-ink' : 'text-ink3 hover:text-ink'
                   )
                 }
               >
-                <n.icon size={16} />
-                <span className="hidden sm:inline">{n.label}</span>
+                <span className="font-mono text-[9px] tracking-wider opacity-50 group-hover:opacity-100">{n.code}</span>
+                <span className="font-medium">{n.label}</span>
+                <NavIndicator path={n.to} end={!!n.end} current={location.pathname} />
               </NavLink>
             ))}
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8 animate-fade-in">
+      <main className="mx-auto max-w-6xl px-6 py-10 animate-fade-up">
         <Outlet />
       </main>
+      <footer className="mx-auto mt-16 max-w-6xl px-6 py-8 font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
+        <div className="border-t border-paper3 pt-6">
+          <span>english hub · vol.01</span> · <span>local-first · indexeddb</span> · <span>made for self-learners</span>
+        </div>
+      </footer>
     </div>
+  );
+}
+
+function NavIndicator({ path, end, current }: { path: string; end: boolean; current: string }) {
+  const active = end ? current === path : current.startsWith(path);
+  if (!active) return null;
+  return (
+    <span className="absolute -bottom-0.5 left-2 right-2 h-0.5 bg-persimmon" />
   );
 }

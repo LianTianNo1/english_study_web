@@ -5,35 +5,154 @@
 @layer base {
   :root {
     color-scheme: light;
+    --paper-grain-opacity: 0.5;
   }
-  html, body, #root {
-    height: 100%;
-  }
+  html, body, #root { height: 100%; }
   body {
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv11';
+    background-color: #FBF7F0;
+    /* 纸张噪点底层 */
+    background-image:
+      url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0.035 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   }
+  ::selection { background: #1A1614; color: #FBF7F0; }
+
+  h1, h2, h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-feature-settings: 'ss01', 'ss03';
+  }
+
+  /* 链接的手绘下划线 */
+  a.linky {
+    text-decoration: none;
+    background-image: linear-gradient(transparent calc(100% - 2px), #D9501F 2px);
+    background-size: 0% 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.3s ease;
+  }
+  a.linky:hover { background-size: 100% 100%; }
 }
 
 @layer components {
+  /* 按钮 —— 印刷风：硬边、墨色阴影、按下错位 */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50;
+    letter-spacing: 0.01em;
   }
   .btn-primary {
-    @apply btn bg-warm-500 text-white shadow-soft hover:bg-warm-600 active:scale-[0.98];
+    @apply btn bg-ink text-paper shadow-ink hover:-translate-y-0.5 active:translate-y-0 active:shadow-none;
   }
-  .btn-secondary {
-    @apply btn bg-cream-100 text-ink-700 hover:bg-cream-200;
+  .btn-accent {
+    @apply btn bg-persimmon text-paper hover:bg-persimmon-600 active:scale-[0.98];
+    box-shadow: 0 2px 0 #8C2F0D;
   }
+  .btn-accent:active { box-shadow: none; transform: translateY(2px); }
   .btn-ghost {
-    @apply btn text-ink-600 hover:bg-cream-100;
+    @apply btn border border-paper3 bg-transparent text-ink2 hover:bg-paper2;
   }
-  .card {
-    @apply rounded-3xl bg-white p-6 shadow-card;
+  .btn-icon {
+    @apply inline-grid h-9 w-9 place-items-center rounded-full border border-paper3 bg-paper text-ink2 transition-all hover:border-ink hover:text-ink;
   }
+
+  /* 纸卡 */
+  .paper-card {
+    @apply relative rounded-lg border border-paper3 bg-paper p-6;
+    background-image:
+      linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,0)),
+      url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    box-shadow: 0 1px 0 rgba(26,22,20,0.04), 0 16px 36px -22px rgba(26,22,20,0.18);
+  }
+  .paper-card-dark {
+    @apply relative rounded-lg p-6 text-paper;
+    background-color: #1A1614;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 0.97 0 0 0 0 0.94 0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  /* 输入框 */
   .input {
-    @apply w-full rounded-2xl border border-ink-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-warm-400 focus:ring-2 focus:ring-warm-200;
+    @apply w-full rounded-md border border-paper3 bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all placeholder:text-muted focus:border-ink focus:shadow-focus;
+    font-family: inherit;
   }
+
+  /* 标签 */
   .tag {
-    @apply inline-flex items-center rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-medium text-ink-600;
+    @apply inline-flex items-center rounded-sm border border-paper3 bg-paper2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink3;
   }
+  .tag-ink { @apply tag border-ink bg-ink text-paper; }
+
+  /* 章节编号 —— 大号衬线数字 */
+  .chapter-num {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-variation-settings: 'opsz' 144;
+    line-height: 0.8;
+    letter-spacing: -0.04em;
+    color: #D9501F;
+  }
+
+  /* 段首字下沉 */
+  .dropcap::first-letter {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 3.4em;
+    float: left;
+    line-height: 0.85;
+    margin: 0.05em 0.08em 0 0;
+    color: #D9501F;
+  }
+
+  /* 手绘强调下划线 */
+  .doodle-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .doodle-underline::after {
+    content: '';
+    position: absolute;
+    left: -2%;
+    right: -2%;
+    bottom: -6px;
+    height: 8px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><path d='M2 5 C 30 1, 60 7, 118 3' stroke='%23D9501F' stroke-width='2.4' fill='none' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    transform-origin: left;
+    animation: underline-grow 0.7s 0.15s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  /* 分隔线 */
+  .divider {
+    @apply relative my-8 flex items-center gap-3 text-[10px] uppercase tracking-[0.25em] text-ink3;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    @apply h-px flex-1 bg-paper3;
+  }
+
+  /* 数据条 */
+  .meter-track {
+    @apply relative h-1.5 w-full overflow-hidden rounded-full bg-paper3;
+  }
+  .meter-bar {
+    @apply absolute left-0 top-0 h-full rounded-full bg-ink transition-all duration-500;
+  }
+
+  /* 表格 */
+  .editorial-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .editorial-table th, .editorial-table td {
+    @apply border-b border-paper3 px-3 py-2 text-left;
+  }
+  .editorial-table th {
+    @apply font-mono text-[10px] uppercase tracking-wider text-ink3;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
 }

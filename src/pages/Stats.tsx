@@ -17,12 +17,23 @@ export function Stats() {
   const [today, setToday] = useState({ learn: 0, review: 0, grammar: 0 });
   const [heatmap, setHeatmap] = useState<Record<string, number>>({});
   const [levelStats, setLevelStats] = useState<LevelStat[]>([]);
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
     (async () => {
       const ts = await sessionsRepo.todayStats();
       setToday({ learn: ts.learn.words, review: ts.review.words, grammar: ts.grammar.words });
-      setHeatmap(await sessionsRepo.heatmap(90));
+      const map = await sessionsRepo.heatmap(180);
+      setHeatmap(map);
+
+      // 计算连续打卡
+      let s = 0;
+      for (let i = 0; i < 365; i++) {
+        const k = todayKey(addDays(new Date(), -i));
+        if ((map[k] ?? 0) > 0) s++;
+        else if (i > 0) break;
+      }
+      setStreak(s);
 
       const stats: LevelStat[] = [];
       for (const l of LEVELS) {
@@ -39,84 +50,103 @@ export function Stats() {
     })();
   }, []);
 
-  // 生成 91 天热力图
   const days: { key: string; count: number }[] = [];
-  const start = addDays(new Date(), -90);
-  for (let i = 0; i <= 90; i++) {
+  const start = addDays(new Date(), -180);
+  for (let i = 0; i <= 180; i++) {
     const d = addDays(start, i);
     const key = todayKey(d);
     days.push({ key, count: heatmap[key] ?? 0 });
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">学习统计</h1>
+    <div className="space-y-12">
+      <header>
+        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 05 · ledger</div>
+        <h1 className="mt-2 font-display text-5xl font-black tracking-tight md:text-6xl">
+          The <span className="italic text-persimmon">Ledger</span>
+        </h1>
+      </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Tile label="今日新学" value={today.learn} unit="词" tone="warm" />
-        <Tile label="今日复习" value={today.review} unit="词" tone="mint" />
-        <Tile label="今日语法" value={today.grammar} unit="节" tone="sky" />
-      </div>
+      <section className="grid gap-px overflow-hidden rounded-md border border-paper3 bg-paper3 md:grid-cols-4">
+        <BigCell label="streak" zh="连续打卡" value={streak} unit="days" tone />
+        <BigCell label="today new" zh="今日新词" value={today.learn} unit="words" />
+        <BigCell label="today review" zh="今日复习" value={today.review} unit="words" />
+        <BigCell label="grammar" zh="今日语法" value={today.grammar} unit="lessons" />
+      </section>
 
-      <section className="card">
-        <h2 className="mb-3 text-base font-semibold">90 天学习热力图</h2>
-        <div className="flex flex-wrap gap-1">
-          {days.map((d) => (
-            <div
-              key={d.key}
-              title={`${d.key} · ${d.count} 词`}
-              className={cn(
-                'h-3.5 w-3.5 rounded-sm',
-                d.count === 0 && 'bg-cream-200',
-                d.count > 0 && d.count < 10 && 'bg-warm-200',
-                d.count >= 10 && d.count < 30 && 'bg-warm-300',
-                d.count >= 30 && d.count < 60 && 'bg-warm-400',
-                d.count >= 60 && 'bg-warm-500'
-              )}
-            />
-          ))}
+      <section>
+        <div className="divider">heatmap · 180 days</div>
+        <div className="paper-card">
+          <div className="flex flex-wrap gap-1">
+            {days.map((d) => (
+              <div
+                key={d.key}
+                title={`${d.key} · ${d.count} words`}
+                className={cn(
+                  'h-3.5 w-3.5 rounded-sm',
+                  d.count === 0 && 'bg-paper2',
+                  d.count > 0 && d.count < 10 && 'bg-persimmon-100',
+                  d.count >= 10 && d.count < 30 && 'bg-persimmon-300',
+                  d.count >= 30 && d.count < 60 && 'bg-persimmon-500',
+                  d.count >= 60 && 'bg-persimmon-700'
+                )}
+              />
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-ink3">
+            less
+            <div className="h-3 w-3 rounded-sm bg-paper2" />
+            <div className="h-3 w-3 rounded-sm bg-persimmon-100" />
+            <div className="h-3 w-3 rounded-sm bg-persimmon-300" />
+            <div className="h-3 w-3 rounded-sm bg-persimmon-500" />
+            <div className="h-3 w-3 rounded-sm bg-persimmon-700" />
+            more
+          </div>
         </div>
       </section>
 
-      <section className="card">
-        <h2 className="mb-3 text-base font-semibold">词库掌握度</h2>
-        {levelStats.length === 0 ? (
-          <p className="text-sm text-ink-500">还没有学习记录。去 "学新词" 开始吧 🌱</p>
-        ) : (
-          <div className="space-y-3">
-            {levelStats.map((s) => {
-              const pct = Math.round((s.learned / s.total) * 100);
-              const mpct = Math.round((s.mastered / s.total) * 100);
-              return (
-                <div key={s.id}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="font-medium">{s.name}</span>
-                    <span className="text-ink-500">
-                      已学 {s.learned} / {s.total}（已掌握 {s.mastered}）
-                    </span>
+      <section>
+        <div className="divider">mastery · 词库掌握度</div>
+        <div className="paper-card">
+          {levelStats.length === 0 ? (
+            <p className="text-sm text-ink3">还没有学习记录。从首页开始吧 →</p>
+          ) : (
+            <div className="space-y-4">
+              {levelStats.map((s) => {
+                const pct = Math.round((s.learned / s.total) * 100);
+                const mpct = Math.round((s.mastered / s.total) * 100);
+                return (
+                  <div key={s.id}>
+                    <div className="mb-1 flex items-baseline justify-between text-sm">
+                      <span className="font-display text-base font-semibold text-ink">{s.name}</span>
+                      <span className="font-mono text-xs text-ink3">
+                        {s.learned}/{s.total} · {pct}%  <span className="text-moss">mastered {s.mastered}</span>
+                      </span>
+                    </div>
+                    <div className="relative h-2 w-full overflow-hidden rounded-full bg-paper3">
+                      <div className="absolute left-0 top-0 h-full bg-persimmon-300" style={{ width: `${pct}%` }} />
+                      <div className="absolute left-0 top-0 h-full bg-moss" style={{ width: `${mpct}%` }} />
+                    </div>
                   </div>
-                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-cream-200">
-                    <div className="absolute left-0 top-0 h-full bg-warm-400" style={{ width: `${pct}%` }} />
-                    <div className="absolute left-0 top-0 h-full bg-mint-500" style={{ width: `${mpct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );
 }
 
-function Tile({ label, value, unit, tone }: { label: string; value: number; unit: string; tone: 'warm' | 'mint' | 'sky' }) {
-  const cls =
-    tone === 'warm' ? 'text-warm-600' : tone === 'mint' ? 'text-mint-500' : 'text-sky2-500';
+function BigCell({ label, zh, value, unit, tone }: { label: string; zh: string; value: number; unit: string; tone?: boolean }) {
   return (
-    <div className="card">
-      <div className="text-xs text-ink-500">{label}</div>
-      <div className={cn('mt-1 text-3xl font-extrabold tracking-tight', cls)}>
-        {value} <span className="text-base font-normal text-ink-400">{unit}</span>
+    <div className={cn('p-6', tone ? 'bg-ink text-paper' : 'bg-paper text-ink')}>
+      <div className={cn('font-mono text-[10px] uppercase tracking-[0.25em]', tone ? 'text-paper/60' : 'text-ink3')}>
+        {label} · {zh}
+      </div>
+      <div className="mt-3 flex items-baseline gap-1.5">
+        <span className="font-display text-5xl font-black tracking-tight">{value}</span>
+        <span className={cn('font-mono text-xs', tone ? 'text-paper/60' : 'text-ink3')}>{unit}</span>
       </div>
     </div>
   );

@@ -14,16 +14,12 @@ type Item = { progress: ProgressRecord; word: WordRecord };
 
 export function Review() {
   const navigate = useNavigate();
-  const { dailyReviewLimit, load, loaded } = useSettings();
+  const { dailyReviewLimit, loaded } = useSettings();
   const [items, setItems] = useState<Item[]>([]);
   const [idx, setIdx] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [stats, setStats] = useState({ correct: 0, total: 0 });
   const [startTime, setStartTime] = useState(0);
-
-  useEffect(() => {
-    if (!loaded) load();
-  }, [loaded, load]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -44,24 +40,28 @@ export function Review() {
 
   if (items.length === 0) {
     return (
-      <div className="card mx-auto max-w-xl text-center">
-        <Trophy size={36} className="mx-auto mb-3 text-mint-500" />
-        <h2 className="text-xl font-bold">今日已无待复习 🎉</h2>
-        <p className="mt-2 text-sm text-ink-500">明天继续来巩固吧。</p>
-        <button onClick={() => navigate('/learn')} className="btn-primary mt-5">去学新词</button>
+      <div className="mx-auto max-w-xl">
+        <div className="paper-card text-center">
+          <Trophy size={36} className="mx-auto mb-3 text-moss" />
+          <h2 className="font-display text-3xl font-black">复习池暂时清空。</h2>
+          <p className="mt-2 text-sm text-ink2">明天再来巩固，或继续学习新词。</p>
+          <button onClick={() => navigate('/learn')} className="btn-accent mt-5">去学新词</button>
+        </div>
       </div>
     );
   }
 
   if (idx >= items.length) {
     return (
-      <div className="card mx-auto max-w-xl text-center animate-fade-in">
-        <Trophy size={40} className="mx-auto mb-3 text-mint-500" />
-        <h2 className="text-2xl font-bold">复习完成</h2>
-        <p className="mt-2 text-sm text-ink-500">
-          共 <b className="text-mint-500">{stats.total}</b> 词 · 记住 <b>{stats.correct}</b> 个
-        </p>
-        <button onClick={() => navigate('/')} className="btn-primary mt-5">回首页</button>
+      <div className="mx-auto max-w-xl">
+        <div className="paper-card text-center">
+          <Trophy size={40} className="mx-auto mb-3 text-persimmon" />
+          <h2 className="font-display text-3xl font-black">复习完成。</h2>
+          <p className="mt-2 text-sm text-ink2">
+            共 <b className="text-persimmon">{stats.total}</b> 词 · 记住 <b>{stats.correct}</b> 个
+          </p>
+          <button onClick={() => navigate('/')} className="btn-accent mt-5">回首页</button>
+        </div>
       </div>
     );
   }
@@ -100,33 +100,34 @@ export function Review() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex items-center justify-between text-sm text-ink-500">
-        <span>复习 {idx + 1} / {items.length}</span>
-        <span>记住 {stats.correct} / 已复习 {stats.total}</span>
+    <div className="mx-auto max-w-2xl space-y-5">
+      <div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 02 · recall</div>
+        <h1 className="mt-1 font-display text-3xl font-black tracking-tight md:text-4xl">温习</h1>
+      </div>
+      <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
+        <span>{idx + 1} / {items.length}</span>
+        <span>kept · {stats.correct} / done · {stats.total}</span>
       </div>
 
-      <div className="card animate-fade-in text-center">
-        <div className="flex items-center justify-center gap-2">
-          <h3 className="text-4xl font-extrabold tracking-tight text-ink-800">{current.word.word}</h3>
-          <button
-            onClick={() => speak(current.word.word)}
-            className="grid h-9 w-9 place-items-center rounded-full bg-cream-100 text-ink-600 hover:bg-warm-100 hover:text-warm-600"
-          >
-            <Volume2 size={16} />
+      <div className="paper-card animate-fade-up text-center">
+        <div className="flex items-baseline justify-center gap-2">
+          <h3 className="font-display text-5xl font-black tracking-tight text-ink md:text-6xl">{current.word.word}</h3>
+          <button onClick={() => speak(current.word.word)} className="btn-icon">
+            <Volume2 size={14} />
           </button>
         </div>
 
         {!showAnswer ? (
-          <button onClick={() => setShowAnswer(true)} className="btn-secondary mt-6 mx-auto">
-            <Eye size={16} /> 查看释义
+          <button onClick={() => setShowAnswer(true)} className="btn-ghost mx-auto mt-7">
+            <Eye size={14} /> 查看释义
           </button>
         ) : (
-          <div className="mt-5 space-y-1.5 text-left animate-fade-in">
+          <div className="mt-6 space-y-2 border-t border-paper3 pt-4 text-left animate-fade-up">
             {current.word.translations.map((t, i) => (
-              <div key={i} className="text-sm">
-                <span className="tag mr-2">{t.type || '—'}</span>
-                <span className="text-ink-700">{t.translation}</span>
+              <div key={i} className="flex items-baseline gap-2 text-base">
+                <span className="tag">{t.type || '—'}</span>
+                <span className="text-ink">{t.translation}</span>
               </div>
             ))}
           </div>
@@ -134,8 +135,8 @@ export function Review() {
       </div>
 
       {showAnswer && (
-        <div className="grid grid-cols-3 gap-3 animate-fade-in">
-          <RateBtn label="忘了" sub="～1 天后" tone="red" onClick={() => rate(0)} />
+        <div className="grid grid-cols-3 gap-3 animate-fade-up">
+          <RateBtn label="忘了" sub="再来一次" tone="red" onClick={() => rate(0)} />
           <RateBtn label="模糊" sub="较短间隔" tone="amber" onClick={() => rate(3)} />
           <RateBtn label="记住" sub="正常间隔" tone="mint" onClick={() => rate(4)} />
         </div>
@@ -146,14 +147,14 @@ export function Review() {
 
 function RateBtn(props: { label: string; sub: string; tone: 'red' | 'amber' | 'mint'; onClick: () => void }) {
   const cls = {
-    red: 'bg-red-50 hover:bg-red-100 text-red-600',
-    amber: 'bg-amber-50 hover:bg-amber-100 text-amber-600',
-    mint: 'bg-emerald-50 hover:bg-emerald-100 text-mint-500',
+    red: 'border-crimson bg-crimson-50 text-crimson hover:bg-crimson-50/80',
+    amber: 'border-persimmon-300 bg-persimmon-50 text-persimmon-700 hover:bg-persimmon-100',
+    mint: 'border-moss-300 bg-moss-50 text-moss-700 hover:bg-moss-50/80',
   }[props.tone];
   return (
-    <button onClick={props.onClick} className={cn('rounded-2xl px-4 py-4 text-center transition-colors', cls)}>
-      <div className="text-base font-bold">{props.label}</div>
-      <div className="mt-0.5 text-[11px] opacity-70">{props.sub}</div>
+    <button onClick={props.onClick} className={cn('rounded-md border px-4 py-4 text-center transition', cls)}>
+      <div className="font-display text-xl font-bold">{props.label}</div>
+      <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider opacity-70">{props.sub}</div>
     </button>
   );
 }

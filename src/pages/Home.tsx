@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, RotateCw, GraduationCap, ArrowRight, Flame, Trophy, Target } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { LEVELS } from '@/db/types';
 import { useSettings } from '@/stores/settingsStore';
 import { progressRepo } from '@/db/repositories/progress';
@@ -9,16 +9,22 @@ import { grammarRepo } from '@/db/repositories/grammar';
 import { GRAMMAR_LESSONS } from '@/data/grammar-lessons';
 
 export function Home() {
-  const { activeLevel, dailyNewWords, load, loaded } = useSettings();
+  const { activeLevel, dailyNewWords } = useSettings();
   const [dueCount, setDueCount] = useState(0);
   const [todayStats, setTodayStats] = useState({ learn: 0, review: 0, grammar: 0 });
   const [grammarDone, setGrammarDone] = useState(0);
+  const [dateStr, setDateStr] = useState('');
 
   useEffect(() => {
-    if (!loaded) load();
-  }, [loaded, load]);
-
-  useEffect(() => {
+    const now = new Date();
+    setDateStr(
+      now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    );
     (async () => {
       const due = await progressRepo.dueForReview(Date.now(), 9999);
       setDueCount(due.length);
@@ -29,93 +35,139 @@ export function Home() {
     })();
   }, []);
 
-  const activeLevelMeta = LEVELS.find((l) => l.id === activeLevel)!;
+  const meta = LEVELS.find((l) => l.id === activeLevel)!;
+  const remaining = Math.max(0, dailyNewWords - todayStats.learn);
 
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-warm-400 via-warm-500 to-warm-600 p-8 text-white shadow-soft">
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-8 -left-6 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative">
-          <p className="text-sm font-medium opacity-90">今日学习</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">每天一点点，英语很快就好起来 🌱</h1>
-          <div className="mt-6 flex flex-wrap items-center gap-4 text-sm">
-            <div className="rounded-2xl bg-white/15 px-4 py-2 backdrop-blur">
-              <span className="opacity-80">当前词库</span> · <b>{activeLevelMeta.name}</b>
-            </div>
-            <div className="rounded-2xl bg-white/15 px-4 py-2 backdrop-blur">
-              <span className="opacity-80">每日新词</span> · <b>{dailyNewWords}</b>
-            </div>
-          </div>
+    <div className="space-y-12">
+      {/* Masthead */}
+      <section className="border-b border-paper3 pb-10">
+        <div className="flex items-end justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
+          <span>vol. 01 · {dateStr}</span>
+          <span>focus / {meta.name}</span>
+        </div>
+        <h1 className="mt-6 font-display text-5xl font-black leading-none tracking-tight text-ink sm:text-6xl md:text-7xl">
+          Today, you learn{' '}
+          <span className="doodle-underline italic text-persimmon">{remaining}</span>{' '}
+          new words.
+        </h1>
+        <p className="mt-6 max-w-2xl text-pretty font-display text-lg italic text-ink2">
+          "每天一点点。三个月后回头，连自己都会惊讶。"
+        </p>
+      </section>
+
+      {/* Today's columns */}
+      <section className="grid gap-6 md:grid-cols-3">
+        <PrimaryAction
+          to="/learn"
+          number="01"
+          title="学新词"
+          en="Acquire"
+          sub={remaining > 0 ? `今天还有 ${remaining} 个新词` : '今日新词已完成'}
+          tone="accent"
+        />
+        <PrimaryAction
+          to="/review"
+          number="02"
+          title="温习"
+          en="Recall"
+          sub={dueCount > 0 ? `${dueCount} 词待复习` : '复习池已空'}
+          tone="dark"
+        />
+        <PrimaryAction
+          to="/grammar"
+          number="03"
+          title="语法"
+          en="Grammar"
+          sub={`${grammarDone} / ${GRAMMAR_LESSONS.length} 节通关`}
+          tone="paper"
+        />
+      </section>
+
+      {/* Stats strip */}
+      <section>
+        <div className="divider">today · 今日记录</div>
+        <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-paper3 bg-paper3">
+          <StatCell label="new" zh="新学" value={todayStats.learn} unit="words" />
+          <StatCell label="review" zh="复习" value={todayStats.review} unit="words" />
+          <StatCell label="grammar" zh="语法" value={todayStats.grammar} unit="lessons" />
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <ActionCard
-          to="/learn"
-          icon={<BookOpen size={20} />}
-          title="学新词"
-          subtitle={`今天还有 ${Math.max(0, dailyNewWords - todayStats.learn)} 个新词`}
-          accent="bg-warm-500"
-        />
-        <ActionCard
-          to="/review"
-          icon={<RotateCw size={20} />}
-          title="复习"
-          subtitle={dueCount > 0 ? `${dueCount} 个词等你回顾` : '今日已无待复习 ✓'}
-          accent="bg-mint-500"
-        />
-        <ActionCard
-          to="/grammar"
-          icon={<GraduationCap size={20} />}
-          title="语法学习"
-          subtitle={`已完成 ${grammarDone} / ${GRAMMAR_LESSONS.length} 节`}
-          accent="bg-sky2-500"
-        />
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        <StatTile icon={<Flame size={18} />} label="今日新学" value={todayStats.learn} unit="词" tone="warm" />
-        <StatTile icon={<Target size={18} />} label="今日复习" value={todayStats.review} unit="词" tone="mint" />
-        <StatTile icon={<Trophy size={18} />} label="语法关卡" value={grammarDone} unit="节" tone="sky" />
+      {/* Editor's note */}
+      <section className="grid gap-6 md:grid-cols-[2fr_1fr]">
+        <div className="paper-card">
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">editor's note</div>
+          <h2 className="mt-2 font-display text-2xl font-bold text-ink">怎么用这本"学习日志"</h2>
+          <p className="mt-3 dropcap text-pretty text-ink2">
+            这不是另一个枯燥的背单词 App。把它当作一本属于你自己的学习手账：每天翻开
+            <Link to="/learn" className="linky font-semibold text-ink"> 学新词 </Link>
+            过 20 个新词，
+            <Link to="/review" className="linky font-semibold text-ink"> 复习 </Link>
+            把昨天/上周容易忘的词再过一遍，到了周末挑一节
+            <Link to="/grammar" className="linky font-semibold text-ink"> 语法 </Link>
+            读完。坚持三个月，再回头看进度页的热力图——会比任何鸡汤都更有说服力。
+          </p>
+        </div>
+        <div className="paper-card-dark">
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-paper/60">tip</div>
+          <p className="mt-3 font-display text-xl leading-snug text-paper">
+            遗忘是必经之路。不要因为忘了就焦虑，那只是大脑提醒你：该见见这个词了。
+          </p>
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-paper/40">
+            — sm-2 algorithm
+          </p>
+        </div>
       </section>
     </div>
   );
 }
 
-function ActionCard(props: { to: string; icon: React.ReactNode; title: string; subtitle: string; accent: string }) {
+function PrimaryAction({
+  to,
+  number,
+  title,
+  en,
+  sub,
+  tone,
+}: {
+  to: string;
+  number: string;
+  title: string;
+  en: string;
+  sub: string;
+  tone: 'accent' | 'dark' | 'paper';
+}) {
+  const styles =
+    tone === 'accent'
+      ? 'bg-persimmon text-paper hover:bg-persimmon-600'
+      : tone === 'dark'
+      ? 'bg-ink text-paper hover:bg-ink2'
+      : 'border border-paper3 bg-paper text-ink hover:border-ink';
   return (
     <Link
-      to={props.to}
-      className="card group flex items-center gap-4 transition-all hover:-translate-y-0.5 hover:shadow-soft"
+      to={to}
+      className={`group relative flex h-44 flex-col justify-between overflow-hidden rounded-lg p-5 transition-all duration-300 hover:-translate-y-1 ${styles}`}
     >
-      <div className={`grid h-12 w-12 place-items-center rounded-2xl text-white ${props.accent}`}>
-        {props.icon}
+      <div className="flex items-start justify-between">
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] opacity-70">{en} · {number}</span>
+        <ArrowUpRight size={18} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
       </div>
-      <div className="flex-1">
-        <div className="text-base font-semibold text-ink-800">{props.title}</div>
-        <div className="text-sm text-ink-500">{props.subtitle}</div>
+      <div>
+        <h3 className="font-display text-3xl font-black tracking-tight">{title}</h3>
+        <p className="mt-1 text-sm opacity-80">{sub}</p>
       </div>
-      <ArrowRight className="text-ink-300 transition-transform group-hover:translate-x-0.5" size={18} />
     </Link>
   );
 }
 
-function StatTile(props: { icon: React.ReactNode; label: string; value: number; unit: string; tone: 'warm' | 'mint' | 'sky' }) {
-  const toneCls =
-    props.tone === 'warm'
-      ? 'bg-warm-50 text-warm-600'
-      : props.tone === 'mint'
-      ? 'bg-emerald-50 text-mint-500'
-      : 'bg-sky-50 text-sky2-500';
+function StatCell({ label, zh, value, unit }: { label: string; zh: string; value: number; unit: string }) {
   return (
-    <div className="card flex items-center gap-3">
-      <div className={`grid h-10 w-10 place-items-center rounded-xl ${toneCls}`}>{props.icon}</div>
-      <div>
-        <div className="text-xs text-ink-500">{props.label}</div>
-        <div className="text-xl font-bold text-ink-800">
-          {props.value} <span className="text-sm font-normal text-ink-400">{props.unit}</span>
-        </div>
+    <div className="bg-paper p-5">
+      <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">{label} · {zh}</div>
+      <div className="mt-2 flex items-baseline gap-1.5">
+        <span className="font-display text-4xl font-black tracking-tight text-ink">{value}</span>
+        <span className="font-mono text-xs text-ink3">{unit}</span>
       </div>
     </div>
   );

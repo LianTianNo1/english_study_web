@@ -8,14 +8,15 @@ import { sessionsRepo } from '@/db/repositories/sessions';
 import { initSession, nextQuestion, submitAnswer, type SessionState } from '@/features/learn-session/session';
 import { QuizCard } from '@/components/QuizCard';
 import { INITIAL_SRS, nextReviewAt, sm2 } from '@/features/srs/sm2';
-import { ChevronRight, Sparkles, Trophy, Volume2 } from 'lucide-react';
+import { ArrowRight, Trophy, Volume2 } from 'lucide-react';
 import { speak } from '@/lib/tts';
+import { shuffle } from '@/lib/utils';
 
 type Stage = 'preview' | 'quiz' | 'done';
 
 export function Learn() {
   const navigate = useNavigate();
-  const { activeLevel, dailyNewWords, load, loaded } = useSettings();
+  const { activeLevel, dailyNewWords, learnOrder, loaded } = useSettings();
   const [stage, setStage] = useState<Stage>('preview');
   const [newWords, setNewWords] = useState<WordRecord[]>([]);
   const [session, setSession] = useState<SessionState | null>(null);
@@ -23,31 +24,43 @@ export function Learn() {
   const [startTime, setStartTime] = useState(0);
 
   useEffect(() => {
-    if (!loaded) load();
-  }, [loaded, load]);
-
-  useEffect(() => {
     if (!loaded) return;
     (async () => {
       const learned = await progressRepo.learnedWordIds(activeLevel);
-      // 按顺序取还没学过的前 N 个
-      const candidates = await wordsRepo.byLevel(activeLevel, dailyNewWords * 4, 0);
-      const remaining: WordRecord[] = [];
-      for (const w of candidates) {
-        if (w.id !== undefined && !learned.has(w.id)) remaining.push(w);
-        if (remaining.length >= dailyNewWords) break;
-      }
-      // 若前 N*4 不够，继续顺延翻页
-      if (remaining.length < dailyNewWords) {
-        const more = await wordsRepo.byLevel(activeLevel, dailyNewWords * 8, dailyNewWords * 4);
-        for (const w of more) {
+      if (learnOrder === 'random') {
+        // 随机模式：从全词库随机抽取未学过的词
+        const picks: WordRecord[] = [];
+        const seen = new Set<number>();
+        const total = await wordsRepo.countByLevel(activeLevel);
+        const maxTries = Math.min(dailyNewWords * 50, total);
+        for (let i = 0; i < maxTries && picks.length < dailyNewWords; i++) {
+          const idx = Math.floor(Math.random() * total);
+          if (seen.has(idx)) continue;
+          seen.add(idx);
+          const arr = await wordsRepo.byLevel(activeLevel, 1, idx);
+          const w = arr[0];
+          if (w?.id !== undefined && !learned.has(w.id)) picks.push(w);
+        }
+        setNewWords(shuffle(picks));
+      } else {
+        // 顺序模式：按 orderIndex
+        const candidates = await wordsRepo.byLevel(activeLevel, dailyNewWords * 4, 0);
+        const remaining: WordRecord[] = [];
+        for (const w of candidates) {
           if (w.id !== undefined && !learned.has(w.id)) remaining.push(w);
           if (remaining.length >= dailyNewWords) break;
         }
+        if (remaining.length < dailyNewWords) {
+          const more = await wordsRepo.byLevel(activeLevel, dailyNewWords * 8, dailyNewWords * 4);
+          for (const w of more) {
+            if (w.id !== undefined && !learned.has(w.id)) remaining.push(w);
+            if (remaining.length >= dailyNewWords) break;
+          }
+        }
+        setNewWords(remaining);
       }
-      setNewWords(remaining);
     })();
-  }, [loaded, activeLevel, dailyNewWords]);
+  }, [loaded, activeLevel, dailyNewWords, learnOrder]);
 
   const currentQuestion = useMemo(() => (session ? nextQuestion(session) : null), [session]);
 
@@ -57,17 +70,15 @@ export function Learn() {
     setStage('quiz');
   }
 
-  async function handleAnswer(answer: string, correct: boolean) {
+  async function handleAnswer(answer: string) {
     if (!session || !currentQuestion) return;
     const { next } = submitAnswer(session, currentQuestion, answer);
     if (next.queue.length === 0) {
-      // 写入 SRS：成功通过的所有词进入复习池
       const now = Date.now();
       for (const w of newWords) {
         if (w.id === undefined) continue;
         const wrong = next.wrongIds.has(w.id);
-        const q = wrong ? 3 : 4;
-        const state = sm2(q, INITIAL_SRS);
+        const state = sm2(wrong ? 3 : 4, INITIAL_SRS);
         await progressRepo.upsert({
           wordId: w.id,
           levelId: w.levelId,
@@ -96,75 +107,68 @@ export function Learn() {
 
   if (newWords.length === 0) {
     return (
-      <div className="card mx-auto max-w-xl text-center">
-        <Trophy size={36} className="mx-auto mb-3 text-warm-500" />
-        <h2 className="text-xl font-bold">{LEVELS.find((l) => l.id === activeLevel)?.name} 词库已学完！</h2>
-        <p className="mt-2 text-sm text-ink-500">去复习页巩固已学单词，或在设置里切换词库。</p>
-        <div className="mt-5 flex justify-center gap-2">
-          <button onClick={() => navigate('/review')} className="btn-primary">前往复习</button>
-          <button onClick={() => navigate('/settings')} className="btn-secondary">切换词库</button>
-        </div>
-      </div>
+      <Empty
+        title={`${LEVELS.find((l) => l.id === activeLevel)?.name} 词库已学完`}
+        sub="去复习页巩固，或在设置中切换其他词库 / 改为乱序模式抽测掌握程度。"
+        actions={[
+          { label: '前往复习', to: '/review', primary: true },
+          { label: '设置', to: '/settings' },
+        ]}
+      />
     );
   }
 
   if (stage === 'preview') {
     const w = newWords[previewIdx];
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">预览今日新词</h2>
-          <div className="text-sm text-ink-500">
-            {previewIdx + 1} / {newWords.length}
-          </div>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Header chapter="01" en="Acquire" zh="新词预览" />
+        <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
+          <span>{learnOrder === 'random' ? 'shuffle mode' : 'sequential'} · {LEVELS.find((l) => l.id === activeLevel)?.name}</span>
+          <span>{previewIdx + 1} / {newWords.length}</span>
         </div>
-        <div className="card animate-fade-in text-center">
-          <div className="flex items-center justify-center gap-2">
-            <h3 className="text-4xl font-extrabold tracking-tight text-ink-800">{w.word}</h3>
-            <button
-              onClick={() => speak(w.word)}
-              className="grid h-9 w-9 place-items-center rounded-full bg-cream-100 text-ink-600 hover:bg-warm-100 hover:text-warm-600"
-            >
-              <Volume2 size={16} />
+
+        <div className="paper-card animate-fade-up">
+          <div className="flex items-baseline gap-3">
+            <h3 className="font-display text-5xl font-black tracking-tight text-ink">{w.word}</h3>
+            <button onClick={() => speak(w.word)} className="btn-icon">
+              <Volume2 size={14} />
             </button>
           </div>
-          <div className="mt-4 space-y-1.5 text-left">
+          <div className="mt-5 space-y-2 border-t border-paper3 pt-4">
             {w.translations.map((t, i) => (
-              <div key={i} className="text-sm">
-                <span className="tag mr-2">{t.type || '—'}</span>
-                <span className="text-ink-700">{t.translation}</span>
+              <div key={i} className="flex items-baseline gap-2 text-base">
+                <span className="tag">{t.type || '—'}</span>
+                <span className="text-ink">{t.translation}</span>
               </div>
             ))}
           </div>
           {w.phrases.length > 0 && (
-            <div className="mt-5 border-t border-cream-200 pt-4 text-left">
-              <div className="label mb-2 text-xs uppercase tracking-wider text-ink-400">常用搭配</div>
-              <ul className="space-y-1 text-sm">
+            <div className="mt-5">
+              <div className="divider !my-3">phrases</div>
+              <ul className="space-y-1.5 text-sm">
                 {w.phrases.slice(0, 3).map((p, i) => (
                   <li key={i}>
-                    <span className="font-medium text-ink-800">{p.phrase}</span>{' '}
-                    <span className="text-ink-500">— {p.translation}</span>
+                    <span className="font-mono font-semibold text-ink">{p.phrase}</span>
+                    <span className="text-ink3"> — {p.translation}</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
         </div>
+
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))}
-            disabled={previewIdx === 0}
-            className="btn-secondary"
-          >
+          <button onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))} disabled={previewIdx === 0} className="btn-ghost">
             上一个
           </button>
           {previewIdx < newWords.length - 1 ? (
             <button onClick={() => setPreviewIdx((i) => i + 1)} className="btn-primary">
-              下一个 <ChevronRight size={16} />
+              下一个 <ArrowRight size={16} />
             </button>
           ) : (
-            <button onClick={startQuiz} className="btn-primary">
-              <Sparkles size={16} /> 开始练习
+            <button onClick={startQuiz} className="btn-accent">
+              开始练习 <ArrowRight size={16} />
             </button>
           )}
         </div>
@@ -174,10 +178,11 @@ export function Learn() {
 
   if (stage === 'quiz' && currentQuestion) {
     return (
-      <div className="space-y-4">
-        <div className="mx-auto flex max-w-2xl items-center justify-between text-sm text-ink-500">
-          <span>已掌握 {session?.passed.length ?? 0} / {newWords.length}</span>
-          <span>正确率 {session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0}%</span>
+      <div className="space-y-5">
+        <Header chapter="01" en="Quiz" zh="练习" />
+        <div className="mx-auto flex max-w-2xl items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
+          <span>passed · {session?.passed.length ?? 0} / {newWords.length}</span>
+          <span>accuracy · {session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0}%</span>
         </div>
         <QuizCard question={currentQuestion} onSubmit={handleAnswer} />
       </div>
@@ -185,16 +190,47 @@ export function Learn() {
   }
 
   return (
-    <div className="card mx-auto max-w-xl text-center animate-fade-in">
-      <Trophy size={40} className="mx-auto mb-3 text-warm-500" />
-      <h2 className="text-2xl font-bold">今日学习完成！</h2>
-      <p className="mt-2 text-sm text-ink-500">
-        新学 <b className="text-warm-600">{newWords.length}</b> 词 · 正确率{' '}
-        <b>{session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0}%</b>
-      </p>
-      <div className="mt-5 flex justify-center gap-2">
-        <button onClick={() => navigate('/')} className="btn-secondary">回首页</button>
-        <button onClick={() => location.reload()} className="btn-primary">再来一组</button>
+    <div className="mx-auto max-w-2xl">
+      <div className="paper-card text-center">
+        <Trophy size={40} className="mx-auto mb-3 text-persimmon" />
+        <h2 className="font-display text-3xl font-black tracking-tight">今天的功课完成了。</h2>
+        <p className="mt-2 text-sm text-ink2">
+          新学 <b className="text-persimmon">{newWords.length}</b> 词 · 准确率{' '}
+          <b>{session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0}%</b>
+        </p>
+        <div className="mt-6 flex justify-center gap-2">
+          <button onClick={() => navigate('/')} className="btn-ghost">回首页</button>
+          <button onClick={() => location.reload()} className="btn-accent">再来一组</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Header({ chapter, en, zh }: { chapter: string; en: string; zh: string }) {
+  return (
+    <div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter {chapter} · {en}</div>
+      <h1 className="mt-1 font-display text-3xl font-black tracking-tight md:text-4xl">{zh}</h1>
+    </div>
+  );
+}
+
+function Empty({ title, sub, actions }: { title: string; sub: string; actions: { label: string; to: string; primary?: boolean }[] }) {
+  const navigate = useNavigate();
+  return (
+    <div className="mx-auto max-w-xl">
+      <div className="paper-card text-center">
+        <Trophy size={36} className="mx-auto mb-3 text-persimmon" />
+        <h2 className="font-display text-2xl font-black">{title}</h2>
+        <p className="mt-2 text-sm text-ink2">{sub}</p>
+        <div className="mt-5 flex justify-center gap-2">
+          {actions.map((a) => (
+            <button key={a.to} onClick={() => navigate(a.to)} className={a.primary ? 'btn-accent' : 'btn-ghost'}>
+              {a.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

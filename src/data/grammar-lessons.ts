@@ -10,11 +10,12 @@ export interface GrammarExample {
 }
 
 export interface GrammarExercise {
-  type: 'choice' | 'fillblank';
-  question: string;
-  options?: string[];
-  answer: string;
-  explain?: string;
+  type: 'choice' | 'fillblank' | 'reorder' | 'translate' | 'correction';
+  question: string;        // 题目（choice 主干 / 翻译的中文 / 改错的英文病句）
+  options?: string[];      // choice 的选项 / reorder 的乱序词块
+  answer: string;          // 正确答案（reorder/translate 用空格分隔的句子）
+  explain?: string;        // 解析
+  hint?: string;           // 提示（翻译题里给关键词等）
 }
 
 export interface GrammarLesson {
@@ -66,6 +67,9 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'They ___ from China.', options: ['am', 'is', 'are'], answer: 'are' },
       { type: 'choice', question: 'It ___ a cat.', options: ['am', 'is', 'are'], answer: 'is' },
       { type: 'choice', question: 'We ___ friends.', options: ['am', 'is', 'are'], answer: 'are' },
+      { type: 'reorder', question: '把单词排成正确句子：', options: ['a', 'student', 'I', 'am'], answer: 'I am a student', explain: '主语 I → am；语序：主语 + be + 表语。' },
+      { type: 'translate', question: '把中文翻译成英文：他是医生。', hint: '关键词：he, doctor', answer: 'He is a doctor', explain: 'he 用 is；职业前加 a。' },
+      { type: 'correction', question: '找出并改正错误：She are my teacher.', answer: 'She is my teacher', explain: 'She 是第三人称单数，be 动词用 is。' },
     ],
   },
   {
@@ -92,6 +96,9 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: '指"她"用？', options: ['He', 'She', 'It'], answer: 'She' },
       { type: 'choice', question: '"他们"是？', options: ['We', 'They', 'You'], answer: 'They' },
       { type: 'choice', question: '"我"在英语里永远？', options: ['小写 i', '大写 I', '都可以'], answer: '大写 I' },
+      { type: 'reorder', question: '排序：', options: ['my', 'friend', 'is', 'She'], answer: 'She is my friend', explain: '主语 + 谓语 + 表语 三件套。' },
+      { type: 'translate', question: '翻译：他们是学生。', hint: 'they / students', answer: 'They are students', explain: 'they 复数，be 用 are，名词复数加 s。' },
+      { type: 'correction', question: 'Me is happy. （找错）', answer: 'I am happy', explain: '作主语只能用 I，不能用 Me。' },
     ],
   },
   {
@@ -118,6 +125,9 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'fillblank', question: 'baby → babies；city → ___', answer: 'cities' },
       { type: 'choice', question: '"两个孩子"是？', options: ['two childs', 'two children', 'two childes'], answer: 'two children' },
       { type: 'choice', question: '"3 buses" 正确吗？', options: ['正确', '错误'], answer: '正确' },
+      { type: 'translate', question: '翻译：我有三只猫。', hint: 'cat 复数', answer: 'I have three cats', explain: '数量 > 1 名词加 s。' },
+      { type: 'correction', question: 'I see two dog. （找错）', answer: 'I see two dogs', explain: '两个就要复数 dogs。' },
+      { type: 'reorder', question: '排序：', options: ['five', 'books', 'There', 'are'], answer: 'There are five books', explain: '复数前 be 用 are。' },
     ],
   },
   {
@@ -144,6 +154,9 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: '___ hour', options: ['a', 'an'], answer: 'an' },
       { type: 'choice', question: '"那本书在桌上"中"那本"用？', options: ['a', 'an', 'the'], answer: 'the' },
       { type: 'choice', question: '___ university', options: ['a', 'an'], answer: 'a' },
+      { type: 'translate', question: '翻译：我每天读一本书。', hint: 'a / every day', answer: 'I read a book every day', explain: 'book 以辅音开头用 a。' },
+      { type: 'correction', question: 'I bought a apple. （找错）', answer: 'I bought an apple', explain: 'apple 元音开头要用 an。' },
+      { type: 'reorder', question: '排序：', options: ['the', 'desk', 'on', 'is', 'The', 'book'], answer: 'The book is on the desk', explain: '"那本特定的书"用 the；"那张桌子"也用 the。' },
     ],
   },
   {
@@ -170,6 +183,9 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'They ___ many books.', options: ['have', 'has'], answer: 'have' },
       { type: 'choice', question: 'My dog ___ four legs.', options: ['have', 'has'], answer: 'has' },
       { type: 'choice', question: 'We ___ a meeting today.', options: ['have', 'has'], answer: 'have' },
+      { type: 'translate', question: '翻译：她有一辆红色的车。', hint: 'red car', answer: 'She has a red car', explain: 'She → has。' },
+      { type: 'correction', question: 'My brother have two dogs. （找错）', answer: 'My brother has two dogs', explain: '"My brother" 是第三人称单数，用 has。' },
+      { type: 'reorder', question: '排序：', options: ['long', 'hair', 'She', 'has'], answer: 'She has long hair', explain: '形容词修饰名词放前面。' },
     ],
   },
   {
@@ -196,6 +212,9 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'She ___ TV at night.', options: ['watch', 'watches'], answer: 'watches' },
       { type: 'choice', question: 'I ___ to work by subway.', options: ['go', 'goes'], answer: 'go' },
       { type: 'choice', question: 'The cat ___ fish.', options: ['like', 'likes'], answer: 'likes' },
+      { type: 'translate', question: '翻译：他每天弹钢琴。', hint: 'play, piano, every day', answer: 'He plays the piano every day', explain: 'He → plays；乐器前一般加 the。' },
+      { type: 'correction', question: 'She go to school by bus. （找错）', answer: 'She goes to school by bus', explain: '第三人称单数 go → goes。' },
+      { type: 'reorder', question: '排序：', options: ['English', 'every day', 'I', 'learn'], answer: 'I learn English every day', explain: '时间状语放句尾。' },
     ],
   },
   {
@@ -222,6 +241,9 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'They ___ playing basketball.', options: ['is', 'are'], answer: 'are' },
       { type: 'fillblank', question: 'run + ing = ___', answer: 'running' },
       { type: 'fillblank', question: 'write + ing = ___', answer: 'writing' },
+      { type: 'translate', question: '翻译：他正在做作业。', hint: 'do homework', answer: 'He is doing his homework', explain: '正在做 = is + doing。' },
+      { type: 'correction', question: 'They is playing football. （找错）', answer: 'They are playing football', explain: 'They 用 are。' },
+      { type: 'reorder', question: '排序：', options: ['a', 'book', 'reading', 'am', 'I'], answer: 'I am reading a book', explain: 'I + am + V-ing + 宾语。' },
     ],
   },
   {
@@ -248,6 +270,9 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'fillblank', question: 'see 的过去式：___', answer: 'saw' },
       { type: 'fillblank', question: 'have 的过去式：___', answer: 'had' },
       { type: 'choice', question: 'I ___ him yesterday.', options: ['meet', 'met'], answer: 'met' },
+      { type: 'translate', question: '翻译：我昨天买了一本书。', hint: 'bought / yesterday', answer: 'I bought a book yesterday', explain: 'buy → bought（不规则）。' },
+      { type: 'correction', question: 'She goed home. （找错）', answer: 'She went home', explain: 'go 的过去式是 went，不是 goed。' },
+      { type: 'reorder', question: '排序：', options: ['last', 'we', 'a movie', 'watched', 'night'], answer: 'we watched a movie last night', explain: '时间状语 last night 放末尾。' },
     ],
   },
   {
