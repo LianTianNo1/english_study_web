@@ -5,6 +5,7 @@ import type {
   SessionRecord,
   GrammarProgressRecord,
   SettingsRecord,
+  MnemonicRecord,
 } from './types';
 
 export class AppDB extends Dexie {
@@ -13,6 +14,7 @@ export class AppDB extends Dexie {
   sessions!: Table<SessionRecord, number>;
   grammarProgress!: Table<GrammarProgressRecord, string>;
   settings!: Table<SettingsRecord, string>;
+  mnemonics!: Table<MnemonicRecord, number>;
 
   constructor() {
     super('english-hub');
@@ -26,6 +28,10 @@ export class AppDB extends Dexie {
     // v2: 错题本 & 难词标记 索引
     this.version(2).stores({
       progress: '++id, &wordId, status, nextReviewAt, levelId, [levelId+status], starred, wrongCount',
+    });
+    // v3: AI 巧记缓存
+    this.version(3).stores({
+      mnemonics: '&wordId, word, createdAt',
     });
   }
 }

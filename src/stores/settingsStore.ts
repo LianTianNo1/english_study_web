@@ -14,6 +14,10 @@ export interface AIConfig {
   apiKey: string;
   model: string;
   temperature: number;
+  /** AI 加题默认数量 (1-10) */
+  exerciseCount: number;
+  /** 批量生成巧记的批次大小 (5-50) */
+  mnemonicBatchSize: number;
 }
 
 export interface TTSConfig {
@@ -30,6 +34,8 @@ export const DEFAULT_AI: AIConfig = {
   apiKey: '',
   model: 'gpt-4o-mini',
   temperature: 0.7,
+  exerciseCount: 3,
+  mnemonicBatchSize: 20,
 };
 
 export const DEFAULT_TTS: TTSConfig = {

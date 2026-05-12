@@ -180,6 +180,57 @@ export async function generateGrammarExercises(
   }
 }
 
+/** 批量生成助记，一次 API 调用搞定一组词 */
+export interface MnemonicItem {
+  word: string;
+  tip: string;       // 一句话巧记（<= 30 字）
+  detail?: string;   // 详细记忆方法
+}
+
+export async function batchGenerateMnemonics(
+  words: { word: string; translations: string }[],
+  cfg: AIConfig,
+  signal?: AbortSignal
+): Promise<MnemonicItem[]> {
+  if (words.length === 0) return [];
+  const list = words.map((w, i) => `${i + 1}. ${w.word} —— ${w.translations}`).join('\n');
+  const out = await chat(
+    [
+      {
+        role: 'system',
+        content: `你是中文母语者的英语记忆教练。为每个英文单词输出"巧记"（一句话口诀或联想，限 30 字内）和可选的"详细记忆方法"（拆词根/谐音/场景，1-3 句）。
+严格输出 JSON 数组，长度与输入完全一致，不要有多余文字或代码块标记。`,
+      },
+      {
+        role: 'user',
+        content: `${list}
+
+输出 JSON 数组，每项格式：
+{ "word": "ability", "tip": "abil(能力)+ity=能干的本事", "detail": "abil 来自 able(能够), -ity 是抽象名词后缀" }
+
+要求：
+- tip 必须有，简短易记，能在练习时一眼复习
+- detail 可选，进一步加深印象
+- 严格保持顺序对应`,
+      },
+    ],
+    cfg,
+    signal
+  );
+  try {
+    const clean = out.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const arr = JSON.parse(clean);
+    if (!Array.isArray(arr)) throw new Error('not array');
+    return arr.map((x) => ({
+      word: String(x.word ?? ''),
+      tip: String(x.tip ?? ''),
+      detail: x.detail ? String(x.detail) : undefined,
+    })).filter((x) => x.word && x.tip);
+  } catch {
+    throw new AIError('AI 返回内容无法解析为巧记数组，请重试或换个模型');
+  }
+}
+
 export async function explainWrongAnswer(question: string, userAnswer: string, correctAnswer: string, cfg: AIConfig): Promise<string> {
   return chat(
     [

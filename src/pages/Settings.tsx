@@ -268,13 +268,45 @@ export function Settings() {
           />
         </Field>
 
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={`AI 加题数量 · ${ai.exerciseCount ?? 3} 道`} hint="语法练习页一键加题的默认数量 (1-10)">
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={1}
+                max={10}
+                step={1}
+                value={ai.exerciseCount ?? 3}
+                onChange={(e) => setAI({ exerciseCount: Number(e.target.value) })}
+                className="flex-1 accent-persimmon"
+              />
+              <span className="w-8 text-right font-mono text-sm font-bold text-ink">{ai.exerciseCount ?? 3}</span>
+            </div>
+          </Field>
+          <Field label={`巧记批次大小 · ${ai.mnemonicBatchSize ?? 20} 词/次`} hint="批量生成巧记时每次 API 请求处理的单词数 (5-50)">
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={5}
+                max={50}
+                step={5}
+                value={ai.mnemonicBatchSize ?? 20}
+                onChange={(e) => setAI({ mnemonicBatchSize: Number(e.target.value) })}
+                className="flex-1 accent-persimmon"
+              />
+              <span className="w-8 text-right font-mono text-sm font-bold text-ink">{ai.mnemonicBatchSize ?? 20}</span>
+            </div>
+          </Field>
+        </div>
+
         <div className="rounded-md border border-dashed border-paper3 bg-paper2/40 p-4 text-xs text-ink3">
           <div className="mb-1 flex items-center gap-1.5 font-mono uppercase tracking-wider">
             <Sparkles size={12} className="text-persimmon" /> ai 能为你做的事
           </div>
           <ul className="ml-4 list-disc space-y-0.5">
+            <li><b>学习页 · 巧记预学</b> · 一键为今日所有新词批量生成口诀，练习时悬浮提示</li>
             <li>词库详情页 · 生成词根/记忆法/三档例句/易混词</li>
-            <li>语法练习页 · 答错时一键解释为什么 / 一键再加 3 道题</li>
+            <li>语法练习页 · 答错时一键解释 / 一键加题（数量可配置）</li>
             <li>所有数据仅发送到你填的 BaseURL，本地零中转。</li>
           </ul>
         </div>
@@ -373,6 +405,7 @@ export function Settings() {
                   <li>学习进度 · {importReport.progress} 条</li>
                   <li>会话记录 · {importReport.sessions} 条</li>
                   <li>语法关卡 · {importReport.grammarProgress} 节</li>
+                  <li>AI 巧记 · {importReport.mnemonics} 条</li>
                   <li>设置偏好 · {importReport.settings} 项</li>
                   {importReport.skippedSettings.length > 0 && (
                     <li className="text-ink3">跳过：{importReport.skippedSettings.join('、')}</li>

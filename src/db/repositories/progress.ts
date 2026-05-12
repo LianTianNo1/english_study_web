@@ -43,10 +43,25 @@ export const progressRepo = {
 
   async markWrong(wordId: number, levelId: LevelId): Promise<void> {
     const r = await this.getByWordId(wordId);
+    const now = Date.now();
     if (r?.id) {
       await db.progress.update(r.id, {
         wrongCount: (r.wrongCount ?? 0) + 1,
-        lastWrongAt: Date.now(),
+        lastWrongAt: now,
+      });
+    } else {
+      // 记录不存在则创建（防御性）
+      await db.progress.add({
+        wordId,
+        levelId,
+        status: 'learning',
+        interval: 1,
+        easeFactor: 2.5,
+        repetitions: 0,
+        lastReviewAt: now,
+        nextReviewAt: now,
+        wrongCount: 1,
+        lastWrongAt: now,
       });
     }
   },

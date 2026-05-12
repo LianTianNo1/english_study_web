@@ -6,8 +6,11 @@ import { Search, Volume2 } from 'lucide-react';
 import { speak } from '@/lib/tts';
 import { cn } from '@/lib/utils';
 import { AIPanel } from '@/components/AIPanel';
+import { MnemonicHint } from '@/components/MnemonicHint';
 import { useSettings } from '@/stores/settingsStore';
 import { explainWord } from '@/lib/ai';
+import { mnemonicsRepo } from '@/db/repositories/mnemonics';
+import type { MnemonicRecord } from '@/db/types';
 
 export function Library() {
   const [level, setLevel] = useState<LevelId>('junior');
@@ -15,7 +18,13 @@ export function Library() {
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<WordRecord | null>(null);
+  const [mnemonic, setMnemonic] = useState<MnemonicRecord | undefined>();
   const aiCfg = useSettings((s) => s.ai);
+
+  useEffect(() => {
+    if (selected?.id !== undefined) mnemonicsRepo.get(selected.id).then(setMnemonic);
+    else setMnemonic(undefined);
+  }, [selected]);
 
   useEffect(() => {
     (async () => {
@@ -132,6 +141,11 @@ export function Library() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+              {mnemonic && (
+                <div className="mt-5">
+                  <MnemonicHint mnemonic={mnemonic} variant="inline" />
                 </div>
               )}
               <AIPanel

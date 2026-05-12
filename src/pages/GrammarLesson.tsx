@@ -76,7 +76,8 @@ export function GrammarLesson() {
     setAiAdding(true);
     setAiError('');
     try {
-      const list = await generateGrammarExercises(lesson!.title, lesson!.formula.rule, ai, 3);
+      const count = Math.max(1, Math.min(10, ai.exerciseCount ?? 3));
+      const list = await generateGrammarExercises(lesson!.title, lesson!.formula.rule, ai, count);
       const adapted: GrammarExercise[] = list.map((q) => ({
         type: 'choice',
         question: q.question,
@@ -220,7 +221,7 @@ export function GrammarLesson() {
 
           <div className="mt-5 flex items-center justify-between">
             <button onClick={addAIExercises} disabled={aiAdding} className="btn-ghost text-xs">
-              {aiAdding ? <><Loader2 size={12} className="animate-spin" /> 生成中…</> : <><Sparkles size={12} className="text-persimmon" /> AI 加 3 道题</>}
+              {aiAdding ? <><Loader2 size={12} className="animate-spin" /> 生成中…</> : <><Sparkles size={12} className="text-persimmon" /> AI 加 {ai.exerciseCount ?? 3} 道题</>}
             </button>
             {revealed && (
               <button onClick={nextEx} className="btn-accent">

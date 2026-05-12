@@ -4,6 +4,8 @@ import { speak } from '@/lib/tts';
 import { cn } from '@/lib/utils';
 import { diffChars } from '@/lib/diff';
 import type { Question } from '@/features/learn-session/session';
+import type { MnemonicRecord } from '@/db/types';
+import { MnemonicHint } from './MnemonicHint';
 
 interface Props {
   question: Question;
@@ -11,6 +13,7 @@ interface Props {
   onSkip?: () => void;
   onToggleStar?: () => Promise<void> | void;
   starred?: boolean;
+  mnemonic?: MnemonicRecord;
   /** 自动朗读：选择题题目出现时 / 拼写题答对后 */
   autoSpeak?: boolean;
 }
@@ -22,7 +25,7 @@ const TYPE_LABEL: Record<Question['type'], string> = {
   phrase: 'collocation · 短语',
 };
 
-export function QuizCard({ question: q, onSubmit, onSkip, onToggleStar, starred, autoSpeak = true }: Props) {
+export function QuizCard({ question: q, onSubmit, onSkip, onToggleStar, starred, mnemonic, autoSpeak = true }: Props) {
   const [answer, setAnswer] = useState('');
   const [revealed, setRevealed] = useState<null | { correct: boolean; chosen: string }>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,14 +45,26 @@ export function QuizCard({ question: q, onSubmit, onSkip, onToggleStar, starred,
   function check(value: string) {
     const ok = value.trim().toLowerCase() === q.answer.trim().toLowerCase();
     setRevealed({ correct: ok, chosen: value });
-    // 答对后朗读单词，强化记忆
     if (autoSpeak && ok) setTimeout(() => speak(q.word.word), 80);
-    setTimeout(() => onSubmit(value, ok), 800);
+    // 答对自动前进，答错等用户主动 ↵ / 点击"继续"——给眼睛/大脑充足时间看正确答案
+    if (ok) setTimeout(() => onSubmit(value, ok), 700);
+  }
+
+  function continueNext() {
+    if (revealed) onSubmit(revealed.chosen, revealed.correct);
   }
 
   // 键盘快捷键
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // 错误已揭示：Enter 继续
+      if (revealed && !revealed.correct) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          continueNext();
+        }
+        return;
+      }
       if (revealed) return;
       if (isChoice && q.options) {
         const n = Number(e.key);
@@ -76,6 +91,7 @@ export function QuizCard({ question: q, onSubmit, onSkip, onToggleStar, starred,
       <div className="mb-4 flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">{TYPE_LABEL[q.type]}</span>
         <div className="flex items-center gap-1">
+          {mnemonic && <MnemonicHint mnemonic={mnemonic} variant="floating" />}
           {onToggleStar && (
             <button
               onClick={onToggleStar}
@@ -122,19 +138,38 @@ export function QuizCard({ question: q, onSubmit, onSkip, onToggleStar, starred,
                 className={cn(
                   'group flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm font-medium transition-all',
                   !revealed && 'border-paper3 bg-paper hover:-translate-y-0.5 hover:border-ink hover:bg-paper2',
-                  revealed && isAnswer && 'border-moss bg-moss-50 text-moss-700',
-                  revealed && chosen && !isAnswer && 'border-crimson bg-crimson-50 text-crimson'
+                  // 答错时正确答案高亮为深墨 + 米色，最醒目
+                  revealed && isAnswer && !revealed.correct && 'border-ink bg-ink text-paper animate-pop',
+                  revealed && isAnswer && revealed.correct && 'border-moss bg-moss-50 text-moss-700',
+                  revealed && chosen && !isAnswer && 'border-crimson bg-crimson-50 text-crimson line-through opacity-70',
+                  revealed && !isAnswer && !chosen && 'border-paper3 bg-paper opacity-40'
                 )}
               >
-                <span className="grid h-5 w-5 shrink-0 place-items-center rounded border border-paper3 bg-paper2 font-mono text-[10px] text-ink3 group-hover:border-ink">
+                <span className={cn(
+                  'grid h-5 w-5 shrink-0 place-items-center rounded border font-mono text-[10px]',
+                  revealed && isAnswer && !revealed.correct ? 'border-paper bg-paper text-ink' : 'border-paper3 bg-paper2 text-ink3 group-hover:border-ink'
+                )}>
                   {i + 1}
                 </span>
                 <span className="flex-1">{opt}</span>
-                {revealed && isAnswer && <CheckCircle2 size={16} className="text-moss" />}
+                {revealed && isAnswer && <CheckCircle2 size={16} className={revealed.correct ? 'text-moss' : 'text-paper'} />}
                 {revealed && chosen && !isAnswer && <XCircle size={16} className="text-crimson" />}
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* 答错后的继续按钮 + 醒目正确答案条 */}
+      {revealed && !revealed.correct && isChoice && (
+        <div className="mt-4 space-y-3 animate-fade-up">
+          <div className="rounded-md border-l-4 border-persimmon bg-persimmon-50/60 p-3 text-sm">
+            <div className="font-mono text-[10px] uppercase tracking-wider text-persimmon-700">正确答案 · correct</div>
+            <div className="mt-1 font-display text-xl font-bold text-ink">{q.answer}</div>
+          </div>
+          <button onClick={continueNext} className="btn-accent w-full">
+            继续 <span className="font-mono text-[10px] opacity-70">↵</span>
+          </button>
         </div>
       )}
 
@@ -165,28 +200,37 @@ export function QuizCard({ question: q, onSubmit, onSkip, onToggleStar, starred,
               ✓ 正确！
             </div>
           ) : (
-            <div className="rounded-md border border-crimson bg-crimson-50 px-4 py-3 text-sm text-crimson">
-              <div className="font-semibold">✗ 拼写有误</div>
-              <div className="mt-2 flex items-center justify-center gap-1 font-mono text-base">
-                {diffChars(revealed.chosen, q.answer).map((d, i) => (
-                  <span
-                    key={i}
-                    className={cn(
-                      d.op === 'match' && 'text-ink2',
-                      d.op === 'sub' && 'rounded bg-crimson px-0.5 text-paper',
-                      d.op === 'ins' && 'rounded bg-persimmon px-0.5 text-paper',
-                      d.op === 'del' && 'text-ink3 line-through opacity-60'
-                    )}
-                  >
-                    {d.char}
-                  </span>
-                ))}
+            <div className="space-y-3">
+              <div className="rounded-md border border-crimson bg-crimson-50 px-4 py-3 text-sm text-crimson">
+                <div className="font-semibold">✗ 拼写有误</div>
+                <div className="mt-2 flex items-center justify-center gap-1 font-mono text-base">
+                  {diffChars(revealed.chosen, q.answer).map((d, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        d.op === 'match' && 'text-ink2',
+                        d.op === 'sub' && 'rounded bg-crimson px-0.5 text-paper',
+                        d.op === 'ins' && 'rounded bg-persimmon px-0.5 text-paper',
+                        d.op === 'del' && 'text-ink3 line-through opacity-60'
+                      )}
+                    >
+                      {d.char}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2 text-center font-mono text-[10px] uppercase tracking-wider opacity-60">
+                  <span className="rounded bg-crimson px-1 text-paper">替换</span>{' '}
+                  <span className="rounded bg-persimmon px-1 text-paper">缺失</span>{' '}
+                  <span className="line-through">多余</span>
+                </div>
               </div>
-              <div className="mt-2 text-center font-mono text-[10px] uppercase tracking-wider opacity-60">
-                <span className="rounded bg-crimson px-1 text-paper">替换</span>{' '}
-                <span className="rounded bg-persimmon px-1 text-paper">缺失</span>{' '}
-                <span className="line-through">多余</span>
+              <div className="rounded-md border-l-4 border-persimmon bg-persimmon-50/60 p-3">
+                <div className="font-mono text-[10px] uppercase tracking-wider text-persimmon-700">正确拼写 · correct</div>
+                <div className="mt-1 font-mono text-xl font-bold text-ink tracking-wide">{q.answer}</div>
               </div>
+              <button onClick={continueNext} className="btn-accent w-full">
+                继续 <span className="font-mono text-[10px] opacity-70">↵</span>
+              </button>
             </div>
           )}
           {!revealed && (

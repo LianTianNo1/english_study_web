@@ -8,15 +8,19 @@ import { sessionsRepo } from '@/db/repositories/sessions';
 import { initSession, nextQuestion, submitAnswer, skipCurrent, type SessionState } from '@/features/learn-session/session';
 import { QuizCard } from '@/components/QuizCard';
 import { INITIAL_SRS, nextReviewAt, sm2 } from '@/features/srs/sm2';
-import { ArrowRight, Trophy, Volume2, Star, Clock } from 'lucide-react';
+import { ArrowRight, Trophy, Volume2, Star, Clock, Lightbulb, Loader2, AlertCircle } from 'lucide-react';
 import { speak } from '@/lib/tts';
 import { cn, shuffle } from '@/lib/utils';
+import { mnemonicsRepo } from '@/db/repositories/mnemonics';
+import { batchGenerateMnemonics } from '@/lib/ai';
+import { MnemonicHint } from '@/components/MnemonicHint';
+import type { MnemonicRecord } from '@/db/types';
 
 type Stage = 'preview' | 'quiz' | 'done';
 
 export function Learn() {
   const navigate = useNavigate();
-  const { activeLevel, dailyNewWords, learnOrder, loaded } = useSettings();
+  const { activeLevel, dailyNewWords, learnOrder, ai, loaded } = useSettings();
   const [stage, setStage] = useState<Stage>('preview');
   const [newWords, setNewWords] = useState<WordRecord[]>([]);
   const [session, setSession] = useState<SessionState | null>(null);
@@ -24,6 +28,10 @@ export function Learn() {
   const [starredIds, setStarredIds] = useState<Set<number>>(new Set());
   const startedAtRef = useRef(0);
   const [elapsed, setElapsed] = useState(0);
+  const [mnemonics, setMnemonics] = useState<Map<number, MnemonicRecord>>(new Map());
+  const [aiBatching, setAiBatching] = useState(false);
+  const [aiBatchError, setAiBatchError] = useState('');
+  const [aiBatchProgress, setAiBatchProgress] = useState({ done: 0, total: 0 });
 
   useEffect(() => {
     if (!loaded) return;
@@ -61,6 +69,71 @@ export function Learn() {
       }
     })();
   }, [loaded, activeLevel, dailyNewWords, learnOrder]);
+
+  // 词组确定后，加载已缓存的巧记
+  useEffect(() => {
+    if (newWords.length === 0) {
+      setMnemonics(new Map());
+      return;
+    }
+    const ids = newWords.map((w) => w.id!).filter((x) => x !== undefined);
+    mnemonicsRepo.getMany(ids).then(setMnemonics);
+  }, [newWords]);
+
+  async function batchAiMnemonics() {
+    if (aiBatching) return;
+    if (!ai.enabled || !ai.apiKey) {
+      setAiBatchError('请先在设置启用 AI 助手并填入 API Key');
+      return;
+    }
+    setAiBatchError('');
+    setAiBatching(true);
+    try {
+      // 只为还没有缓存的词生成
+      const todo = newWords.filter((w) => w.id !== undefined && !mnemonics.has(w.id!));
+      if (todo.length === 0) {
+        setAiBatching(false);
+        return;
+      }
+      const batchSize = Math.max(5, Math.min(50, ai.mnemonicBatchSize ?? 20));
+      setAiBatchProgress({ done: 0, total: todo.length });
+      const accum = new Map(mnemonics);
+      for (let i = 0; i < todo.length; i += batchSize) {
+        const chunk = todo.slice(i, i + batchSize);
+        const items = await batchGenerateMnemonics(
+          chunk.map((w) => ({
+            word: w.word,
+            translations: w.translations.map((t) => t.translation).join('；'),
+          })),
+          ai
+        );
+        // 按顺序匹配（AI 已被指示保持顺序）
+        const now = Date.now();
+        const recs: MnemonicRecord[] = [];
+        chunk.forEach((w, idx) => {
+          const m = items[idx];
+          if (!m || !w.id) return;
+          const rec: MnemonicRecord = {
+            wordId: w.id,
+            word: w.word,
+            tip: m.tip,
+            detail: m.detail,
+            createdAt: now,
+            model: ai.model,
+          };
+          recs.push(rec);
+          accum.set(w.id, rec);
+        });
+        await mnemonicsRepo.putMany(recs);
+        setMnemonics(new Map(accum));
+        setAiBatchProgress({ done: Math.min(i + batchSize, todo.length), total: todo.length });
+      }
+    } catch (e) {
+      setAiBatchError((e as Error).message);
+    } finally {
+      setAiBatching(false);
+    }
+  }
 
   // 预览自动朗读
   useEffect(() => {
@@ -131,10 +204,8 @@ export function Learn() {
 
   async function handleAnswer(_answer: string, correct: boolean) {
     if (!session || !currentQuestion) return;
-    // 答错立即写错题计数（用于错题本）
-    if (!correct && currentQuestion.word.id !== undefined) {
-      await progressRepo.markWrong(currentQuestion.word.id, currentQuestion.word.levelId);
-    }
+    // 注意：此时 progress 行尚未创建，wrongCount 写入会丢失。
+    // 真正的错题累计在会话结束时根据 next.wrongIds 一次性写入。
     const { next } = submitAnswer(session, currentQuestion, _answer);
     if (next.queue.length === 0) {
       const now = Date.now();
@@ -153,6 +224,10 @@ export function Learn() {
           repetitions: state.repetitions,
           lastReviewAt: now,
           nextReviewAt: nextReviewAt(state, now),
+          // ⭐ 关键修复：错题计数累加，从未学过的词起始为 0
+          wrongCount: (prev?.wrongCount ?? 0) + (wrong ? 1 : 0),
+          lastWrongAt: wrong ? now : (prev?.lastWrongAt ?? 0),
+          starred: prev?.starred ?? false,
         });
       }
       await sessionsRepo.log({
@@ -199,10 +274,68 @@ export function Learn() {
   if (stage === 'preview') {
     const w = newWords[previewIdx];
     const pct = ((previewIdx + 1) / newWords.length) * 100;
+    const wordMnemonic = w.id !== undefined ? mnemonics.get(w.id) : undefined;
+    const aiCoveredCount = newWords.filter((x) => x.id !== undefined && mnemonics.has(x.id)).length;
+    const aiAvailable = ai.enabled && !!ai.apiKey;
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <Header chapter="01" en="Acquire" zh="新词预览" />
         <ProgressLine label={learnOrder === 'random' ? 'shuffle mode' : 'sequential'} sub={`${LEVELS.find((l) => l.id === activeLevel)?.name}`} pct={pct} index={previewIdx + 1} total={newWords.length} />
+
+        {/* AI 巧记批量条 */}
+        <div className={cn(
+          'flex items-center gap-3 rounded-md border p-3',
+          aiCoveredCount === newWords.length && aiCoveredCount > 0
+            ? 'border-moss/30 bg-moss-50/40'
+            : 'border-persimmon/30 bg-persimmon-50/30'
+        )}>
+          <div className={cn(
+            'grid h-10 w-10 shrink-0 place-items-center rounded-md',
+            aiCoveredCount === newWords.length && aiCoveredCount > 0
+              ? 'bg-moss text-paper'
+              : 'bg-persimmon text-paper'
+          )}>
+            <Lightbulb size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-display text-sm font-bold text-ink">
+              {aiCoveredCount === 0 ? 'AI 巧记预学' : aiCoveredCount === newWords.length ? '巧记已就绪 ✓' : `已生成 ${aiCoveredCount} / ${newWords.length}`}
+            </div>
+            <div className="mt-0.5 text-xs text-ink3">
+              {aiCoveredCount === 0
+                ? '为本组单词批量生成口诀和记忆方法，练习时可悬浮提示'
+                : aiCoveredCount === newWords.length
+                ? '练习时每张卡的右上角 💡 按钮即可唤出'
+                : aiBatching
+                ? `正在生成 ${aiBatchProgress.done}/${aiBatchProgress.total}…`
+                : '点击右侧"补齐"为剩余单词生成'}
+            </div>
+            {aiBatching && (
+              <div className="mt-2 meter-track !h-1">
+                <div
+                  className="meter-bar bg-persimmon"
+                  style={{ width: `${aiBatchProgress.total === 0 ? 0 : (aiBatchProgress.done / aiBatchProgress.total) * 100}%` }}
+                />
+              </div>
+            )}
+          </div>
+          {aiCoveredCount < newWords.length && (
+            <button
+              onClick={batchAiMnemonics}
+              disabled={aiBatching || !aiAvailable}
+              className="btn-accent shrink-0"
+              title={!aiAvailable ? '请先在设置启用 AI' : undefined}
+            >
+              {aiBatching ? <><Loader2 size={14} className="animate-spin" /> 生成中</> : aiCoveredCount === 0 ? <><Lightbulb size={14} /> 一键生成</> : <>补齐 {newWords.length - aiCoveredCount}</>}
+            </button>
+          )}
+        </div>
+        {aiBatchError && (
+          <div className="flex items-start gap-2 rounded-md border border-crimson bg-crimson-50 p-3 text-sm text-crimson">
+            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+            <span>{aiBatchError}</span>
+          </div>
+        )}
 
         <div className="paper-card animate-fade-up">
           <div className="flex items-baseline justify-between gap-3">
@@ -239,6 +372,11 @@ export function Learn() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+          {wordMnemonic && (
+            <div className="mt-5">
+              <MnemonicHint mnemonic={wordMnemonic} variant="inline" />
             </div>
           )}
         </div>
@@ -286,6 +424,7 @@ export function Learn() {
           onSkip={handleSkip}
           onToggleStar={handleStarCurrent}
           starred={isStarred}
+          mnemonic={currentQuestion.word.id !== undefined ? mnemonics.get(currentQuestion.word.id) : undefined}
         />
       </div>
     );

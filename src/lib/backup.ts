@@ -1,5 +1,5 @@
 import { db } from '@/db/schema';
-import type { ProgressRecord, SessionRecord, GrammarProgressRecord, SettingsRecord } from '@/db/types';
+import type { ProgressRecord, SessionRecord, GrammarProgressRecord, SettingsRecord, MnemonicRecord } from '@/db/types';
 
 /** 备份只包含"用户学习成果" —— 不包含词库（可重新导入）和敏感凭据（API Key） */
 export interface BackupV1 {
@@ -10,9 +10,10 @@ export interface BackupV1 {
   sessions: SessionRecord[];
   grammarProgress: GrammarProgressRecord[];
   settings: SettingsRecord[];
+  mnemonics?: MnemonicRecord[];  // v0.3+ 新增
 }
 
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.3.0';
 
 /* ---------- 敏感字段脱敏 ---------- */
 const SENSITIVE_SETTING_KEYS = new Set(['ai']); // ai 配置含 apiKey
@@ -36,11 +37,12 @@ export interface ExportOptions {
 
 export async function buildBackup(opts: ExportOptions = {}): Promise<BackupV1> {
   const { includeSettings = true, includeSessions = true } = opts;
-  const [progress, sessions, grammarProgress, settings] = await Promise.all([
+  const [progress, sessions, grammarProgress, settings, mnemonics] = await Promise.all([
     db.progress.toArray(),
     includeSessions ? db.sessions.toArray() : Promise.resolve([]),
     db.grammarProgress.toArray(),
     includeSettings ? db.settings.toArray() : Promise.resolve([]),
+    db.mnemonics.toArray(),
   ]);
   return {
     version: 1,
@@ -50,6 +52,7 @@ export async function buildBackup(opts: ExportOptions = {}): Promise<BackupV1> {
     sessions,
     grammarProgress,
     settings: sanitizeSettings(settings),
+    mnemonics,
   };
 }
 
@@ -74,6 +77,7 @@ export interface ImportReport {
   sessions: number;
   grammarProgress: number;
   settings: number;
+  mnemonics: number;
   skippedSettings: string[];
 }
 
@@ -104,14 +108,16 @@ export async function applyBackup(backup: BackupV1, strategy: ImportStrategy): P
     sessions: 0,
     grammarProgress: 0,
     settings: 0,
+    mnemonics: 0,
     skippedSettings: [],
   };
 
-  await db.transaction('rw', [db.progress, db.sessions, db.grammarProgress, db.settings], async () => {
+  await db.transaction('rw', [db.progress, db.sessions, db.grammarProgress, db.settings, db.mnemonics], async () => {
     if (strategy === 'replace') {
       await db.progress.clear();
       await db.sessions.clear();
       await db.grammarProgress.clear();
+      await db.mnemonics.clear();
       // settings 不全清——保留 AI/TTS 等本地凭据
     }
 
@@ -138,6 +144,12 @@ export async function applyBackup(backup: BackupV1, strategy: ImportStrategy): P
     for (const g of backup.grammarProgress) {
       await db.grammarProgress.put(g);
       report.grammarProgress++;
+    }
+
+    // mnemonics: 按 wordId 覆盖
+    for (const m of backup.mnemonics ?? []) {
+      await db.mnemonics.put(m);
+      report.mnemonics++;
     }
 
     // settings: 不覆盖敏感配置，且 apiKey 为空字符串时跳过（避免清空已有 key）
