@@ -5,6 +5,7 @@ import { Onboarding } from './pages/Onboarding';
 import { Library } from './pages/Library';
 import { Learn } from './pages/Learn';
 import { Review } from './pages/Review';
+import { Mistakes } from './pages/Mistakes';
 import { Grammar } from './pages/Grammar';
 import { GrammarLesson } from './pages/GrammarLesson';
 import { Stats } from './pages/Stats';
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: 'library', element: <Library /> },
       { path: 'learn', element: <Learn /> },
       { path: 'review', element: <Review /> },
+      { path: 'mistakes', element: <Mistakes /> },
       { path: 'grammar', element: <Grammar /> },
       { path: 'grammar/:lessonId', element: <GrammarLesson /> },
       { path: 'stats', element: <Stats /> },

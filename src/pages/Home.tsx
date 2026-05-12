@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, AlertCircle } from 'lucide-react';
 import { LEVELS } from '@/db/types';
 import { useSettings } from '@/stores/settingsStore';
 import { progressRepo } from '@/db/repositories/progress';
@@ -13,6 +13,8 @@ export function Home() {
   const [dueCount, setDueCount] = useState(0);
   const [todayStats, setTodayStats] = useState({ learn: 0, review: 0, grammar: 0 });
   const [grammarDone, setGrammarDone] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [starredCount, setStarredCount] = useState(0);
   const [dateStr, setDateStr] = useState('');
 
   useEffect(() => {
@@ -32,6 +34,10 @@ export function Home() {
       setTodayStats({ learn: st.learn.words, review: st.review.words, grammar: st.grammar.words });
       const grams = await grammarRepo.all();
       setGrammarDone(grams.filter((g) => g.status === 'completed').length);
+      const wrong = await progressRepo.wrongWords(9999);
+      setWrongCount(wrong.length);
+      const stars = await progressRepo.starredWords();
+      setStarredCount(stars.length);
     })();
   }, []);
 
@@ -93,6 +99,28 @@ export function Home() {
           <StatCell label="grammar" zh="语法" value={todayStats.grammar} unit="lessons" />
         </div>
       </section>
+
+      {/* Focus strip 错题本 / 难词 */}
+      {(wrongCount > 0 || starredCount > 0) && (
+        <section>
+          <div className="divider">focus · 专攻</div>
+          <Link to="/mistakes" className="group flex items-center gap-4 rounded-md border border-paper3 bg-paper p-5 transition-all hover:-translate-y-0.5 hover:border-ink">
+            <div className="grid h-12 w-12 place-items-center rounded-md border border-crimson/30 bg-crimson-50 text-crimson">
+              <AlertCircle size={20} />
+            </div>
+            <div className="flex-1">
+              <div className="font-display text-xl font-bold text-ink">错题本 / 难词收藏</div>
+              <div className="mt-0.5 text-sm text-ink3">
+                {wrongCount > 0 && <>错过 <b className="text-crimson">{wrongCount}</b> 个</>}
+                {wrongCount > 0 && starredCount > 0 && ' · '}
+                {starredCount > 0 && <>收藏 <b className="text-persimmon">{starredCount}</b> 个难词</>}
+                {' '}集中突破比泛泛复习更高效。
+              </div>
+            </div>
+            <ArrowUpRight size={18} className="text-ink3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </Link>
+        </section>
+      )}
 
       {/* Editor's note */}
       <section className="grid gap-6 md:grid-cols-[2fr_1fr]">

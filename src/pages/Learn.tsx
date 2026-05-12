@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LEVELS, type WordRecord } from '@/db/types';
 import { useSettings } from '@/stores/settingsStore';
 import { wordsRepo } from '@/db/repositories/words';
 import { progressRepo } from '@/db/repositories/progress';
 import { sessionsRepo } from '@/db/repositories/sessions';
-import { initSession, nextQuestion, submitAnswer, type SessionState } from '@/features/learn-session/session';
+import { initSession, nextQuestion, submitAnswer, skipCurrent, type SessionState } from '@/features/learn-session/session';
 import { QuizCard } from '@/components/QuizCard';
 import { INITIAL_SRS, nextReviewAt, sm2 } from '@/features/srs/sm2';
-import { ArrowRight, Trophy, Volume2 } from 'lucide-react';
+import { ArrowRight, Trophy, Volume2, Star, Clock } from 'lucide-react';
 import { speak } from '@/lib/tts';
-import { shuffle } from '@/lib/utils';
+import { cn, shuffle } from '@/lib/utils';
 
 type Stage = 'preview' | 'quiz' | 'done';
 
@@ -21,14 +21,15 @@ export function Learn() {
   const [newWords, setNewWords] = useState<WordRecord[]>([]);
   const [session, setSession] = useState<SessionState | null>(null);
   const [previewIdx, setPreviewIdx] = useState(0);
-  const [startTime, setStartTime] = useState(0);
+  const [starredIds, setStarredIds] = useState<Set<number>>(new Set());
+  const startedAtRef = useRef(0);
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     if (!loaded) return;
     (async () => {
       const learned = await progressRepo.learnedWordIds(activeLevel);
       if (learnOrder === 'random') {
-        // 随机模式：从全词库随机抽取未学过的词
         const picks: WordRecord[] = [];
         const seen = new Set<number>();
         const total = await wordsRepo.countByLevel(activeLevel);
@@ -43,7 +44,6 @@ export function Learn() {
         }
         setNewWords(shuffle(picks));
       } else {
-        // 顺序模式：按 orderIndex
         const candidates = await wordsRepo.byLevel(activeLevel, dailyNewWords * 4, 0);
         const remaining: WordRecord[] = [];
         for (const w of candidates) {
@@ -62,24 +62,89 @@ export function Learn() {
     })();
   }, [loaded, activeLevel, dailyNewWords, learnOrder]);
 
+  // 预览自动朗读
+  useEffect(() => {
+    if (stage !== 'preview' || newWords.length === 0) return;
+    const t = setTimeout(() => speak(newWords[previewIdx].word), 250);
+    return () => clearTimeout(t);
+  }, [stage, previewIdx, newWords]);
+
+  // 预览键盘
+  useEffect(() => {
+    if (stage !== 'preview') return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault();
+        if (previewIdx < newWords.length - 1) setPreviewIdx((i) => i + 1);
+        else startQuiz();
+      } else if (e.key === 'ArrowLeft') {
+        setPreviewIdx((i) => Math.max(0, i - 1));
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        speak(newWords[previewIdx].word);
+      } else if (e.key.toLowerCase() === 's') {
+        toggleStar(newWords[previewIdx]);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [stage, previewIdx, newWords]);
+
+  // 计时
+  useEffect(() => {
+    if (stage !== 'quiz') return;
+    if (startedAtRef.current === 0) startedAtRef.current = Date.now();
+    const t = setInterval(() => setElapsed(Date.now() - startedAtRef.current), 1000);
+    return () => clearInterval(t);
+  }, [stage]);
+
   const currentQuestion = useMemo(() => (session ? nextQuestion(session) : null), [session]);
 
   function startQuiz() {
     setSession(initSession(newWords));
-    setStartTime(Date.now());
+    startedAtRef.current = Date.now();
     setStage('quiz');
   }
 
-  async function handleAnswer(answer: string) {
+  async function toggleStar(w: WordRecord) {
+    if (w.id === undefined) return;
+    // 先确保 progress 行存在
+    let r = await progressRepo.getByWordId(w.id);
+    if (!r) {
+      await progressRepo.upsert({
+        wordId: w.id,
+        levelId: w.levelId,
+        status: 'new',
+        interval: 0,
+        easeFactor: INITIAL_SRS.easeFactor,
+        repetitions: 0,
+        lastReviewAt: 0,
+        nextReviewAt: 0,
+      });
+    }
+    const next = await progressRepo.toggleStar(w.id);
+    const set = new Set(starredIds);
+    if (next) set.add(w.id);
+    else set.delete(w.id);
+    setStarredIds(set);
+  }
+
+  async function handleAnswer(_answer: string, correct: boolean) {
     if (!session || !currentQuestion) return;
-    const { next } = submitAnswer(session, currentQuestion, answer);
+    // 答错立即写错题计数（用于错题本）
+    if (!correct && currentQuestion.word.id !== undefined) {
+      await progressRepo.markWrong(currentQuestion.word.id, currentQuestion.word.levelId);
+    }
+    const { next } = submitAnswer(session, currentQuestion, _answer);
     if (next.queue.length === 0) {
       const now = Date.now();
       for (const w of newWords) {
         if (w.id === undefined) continue;
         const wrong = next.wrongIds.has(w.id);
         const state = sm2(wrong ? 3 : 4, INITIAL_SRS);
+        const prev = await progressRepo.getByWordId(w.id);
         await progressRepo.upsert({
+          ...(prev ?? {}),
           wordId: w.id,
           levelId: w.levelId,
           status: 'learning',
@@ -94,7 +159,7 @@ export function Learn() {
         type: 'learn',
         wordsCount: newWords.length,
         correctCount: next.correctAttempts,
-        durationMs: Date.now() - startTime,
+        durationMs: Date.now() - startedAtRef.current,
       });
       setSession(next);
       setStage('done');
@@ -103,36 +168,56 @@ export function Learn() {
     }
   }
 
+  function handleSkip() {
+    if (!session) return;
+    setSession(skipCurrent(session));
+  }
+
+  async function handleStarCurrent() {
+    if (!currentQuestion) return;
+    await toggleStar(currentQuestion.word);
+  }
+
   if (!loaded) return null;
 
   if (newWords.length === 0) {
     return (
-      <Empty
-        title={`${LEVELS.find((l) => l.id === activeLevel)?.name} 词库已学完`}
-        sub="去复习页巩固，或在设置中切换其他词库 / 改为乱序模式抽测掌握程度。"
-        actions={[
-          { label: '前往复习', to: '/review', primary: true },
-          { label: '设置', to: '/settings' },
-        ]}
-      />
+      <div className="mx-auto max-w-xl">
+        <div className="paper-card text-center">
+          <Trophy size={36} className="mx-auto mb-3 text-persimmon" />
+          <h2 className="font-display text-2xl font-black">{LEVELS.find((l) => l.id === activeLevel)?.name} 词库已学完</h2>
+          <p className="mt-2 text-sm text-ink2">去复习页巩固，或在设置切换词库 / 改为乱序模式。</p>
+          <div className="mt-5 flex justify-center gap-2">
+            <button onClick={() => navigate('/review')} className="btn-accent">前往复习</button>
+            <button onClick={() => navigate('/settings')} className="btn-ghost">设置</button>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (stage === 'preview') {
     const w = newWords[previewIdx];
+    const pct = ((previewIdx + 1) / newWords.length) * 100;
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <Header chapter="01" en="Acquire" zh="新词预览" />
-        <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
-          <span>{learnOrder === 'random' ? 'shuffle mode' : 'sequential'} · {LEVELS.find((l) => l.id === activeLevel)?.name}</span>
-          <span>{previewIdx + 1} / {newWords.length}</span>
-        </div>
+        <ProgressLine label={learnOrder === 'random' ? 'shuffle mode' : 'sequential'} sub={`${LEVELS.find((l) => l.id === activeLevel)?.name}`} pct={pct} index={previewIdx + 1} total={newWords.length} />
 
         <div className="paper-card animate-fade-up">
-          <div className="flex items-baseline gap-3">
-            <h3 className="font-display text-5xl font-black tracking-tight text-ink">{w.word}</h3>
-            <button onClick={() => speak(w.word)} className="btn-icon">
-              <Volume2 size={14} />
+          <div className="flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline gap-3">
+              <h3 className="font-display text-5xl font-black tracking-tight text-ink">{w.word}</h3>
+              <button onClick={() => speak(w.word)} className="btn-icon" title="朗读 (Space)">
+                <Volume2 size={14} />
+              </button>
+            </div>
+            <button
+              onClick={() => toggleStar(w)}
+              className={cn('btn-icon', w.id !== undefined && starredIds.has(w.id) && 'border-persimmon text-persimmon')}
+              title="标记难词 (S)"
+            >
+              <Star size={14} className={cn(w.id !== undefined && starredIds.has(w.id) && 'fill-persimmon')} />
             </button>
           </div>
           <div className="mt-5 space-y-2 border-t border-paper3 pt-4">
@@ -160,11 +245,14 @@ export function Learn() {
 
         <div className="flex items-center justify-between">
           <button onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))} disabled={previewIdx === 0} className="btn-ghost">
-            上一个
+            ← 上一个
           </button>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-ink3">
+            ← → 翻页 · space 朗读 · s 收藏 · ↵ 下一个/开始
+          </span>
           {previewIdx < newWords.length - 1 ? (
             <button onClick={() => setPreviewIdx((i) => i + 1)} className="btn-primary">
-              下一个 <ArrowRight size={16} />
+              下一个 →
             </button>
           ) : (
             <button onClick={startQuiz} className="btn-accent">
@@ -177,27 +265,49 @@ export function Learn() {
   }
 
   if (stage === 'quiz' && currentQuestion) {
+    const total = newWords.length;
+    const passed = session?.passed.length ?? 0;
+    const pct = (passed / total) * 100;
+    const isStarred = currentQuestion.word.id !== undefined && starredIds.has(currentQuestion.word.id);
     return (
       <div className="space-y-5">
         <Header chapter="01" en="Quiz" zh="练习" />
-        <div className="mx-auto flex max-w-2xl items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
-          <span>passed · {session?.passed.length ?? 0} / {newWords.length}</span>
-          <span>accuracy · {session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0}%</span>
-        </div>
-        <QuizCard question={currentQuestion} onSubmit={handleAnswer} />
+        <ProgressLine
+          label={`accuracy ${session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0}%`}
+          sub={`${fmtElapsed(elapsed)}`}
+          pct={pct}
+          index={passed}
+          total={total}
+          icon={<Clock size={11} />}
+        />
+        <QuizCard
+          question={currentQuestion}
+          onSubmit={handleAnswer}
+          onSkip={handleSkip}
+          onToggleStar={handleStarCurrent}
+          starred={isStarred}
+        />
       </div>
     );
   }
 
+  // done
+  const accuracy = session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0;
+  const wrongCount = session?.wrongIds.size ?? 0;
   return (
     <div className="mx-auto max-w-2xl">
       <div className="paper-card text-center">
         <Trophy size={40} className="mx-auto mb-3 text-persimmon" />
         <h2 className="font-display text-3xl font-black tracking-tight">今天的功课完成了。</h2>
         <p className="mt-2 text-sm text-ink2">
-          新学 <b className="text-persimmon">{newWords.length}</b> 词 · 准确率{' '}
-          <b>{session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0}%</b>
+          新学 <b className="text-persimmon">{newWords.length}</b> 词 · 准确率 <b>{accuracy}%</b> · 用时 <b className="font-mono">{fmtElapsed(elapsed)}</b>
         </p>
+        {wrongCount > 0 && (
+          <div className="mx-auto mt-4 max-w-md rounded-md border border-crimson/40 bg-crimson-50/40 p-3 text-sm text-crimson">
+            其中 <b>{wrongCount}</b> 个词曾答错。
+            <button onClick={() => navigate('/mistakes')} className="linky ml-1 font-semibold">去错题本重练 →</button>
+          </div>
+        )}
         <div className="mt-6 flex justify-center gap-2">
           <button onClick={() => navigate('/')} className="btn-ghost">回首页</button>
           <button onClick={() => location.reload()} className="btn-accent">再来一组</button>
@@ -216,22 +326,22 @@ function Header({ chapter, en, zh }: { chapter: string; en: string; zh: string }
   );
 }
 
-function Empty({ title, sub, actions }: { title: string; sub: string; actions: { label: string; to: string; primary?: boolean }[] }) {
-  const navigate = useNavigate();
+function ProgressLine({ label, sub, pct, index, total, icon }: { label: string; sub: string; pct: number; index: number; total: number; icon?: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-xl">
-      <div className="paper-card text-center">
-        <Trophy size={36} className="mx-auto mb-3 text-persimmon" />
-        <h2 className="font-display text-2xl font-black">{title}</h2>
-        <p className="mt-2 text-sm text-ink2">{sub}</p>
-        <div className="mt-5 flex justify-center gap-2">
-          {actions.map((a) => (
-            <button key={a.to} onClick={() => navigate(a.to)} className={a.primary ? 'btn-accent' : 'btn-ghost'}>
-              {a.label}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-ink3">
+        <span>{label}</span>
+        <span className="flex items-center gap-1">{icon}{sub} · {index}/{total}</span>
+      </div>
+      <div className="meter-track">
+        <div className="meter-bar bg-persimmon" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
+}
+
+function fmtElapsed(ms: number) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }

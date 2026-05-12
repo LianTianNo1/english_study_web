@@ -55,6 +55,9 @@ export interface ProgressRecord {
   repetitions: number;
   lastReviewAt: number;
   nextReviewAt: number;
+  starred?: boolean;       // 难词标记
+  wrongCount?: number;     // 累计答错次数（错题本依据）
+  lastWrongAt?: number;    // 最近一次答错时间
 }
 
 export type SessionType = 'learn' | 'review' | 'grammar';

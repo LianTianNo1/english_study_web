@@ -23,6 +23,10 @@ export class AppDB extends Dexie {
       grammarProgress: '&lessonId, status',
       settings: '&key',
     });
+    // v2: 错题本 & 难词标记 索引
+    this.version(2).stores({
+      progress: '++id, &wordId, status, nextReviewAt, levelId, [levelId+status], starred, wrongCount',
+    });
   }
 }
 

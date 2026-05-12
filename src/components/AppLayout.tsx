@@ -8,6 +8,7 @@ const NAV = [
   { to: '/', label: '今日', code: '00', end: true },
   { to: '/learn', label: '新词', code: '01' },
   { to: '/review', label: '复习', code: '02' },
+  { to: '/mistakes', label: '错题', code: '2b' },
   { to: '/grammar', label: '语法', code: '03' },
   { to: '/library', label: '词库', code: '04' },
   { to: '/stats', label: '统计', code: '05' },

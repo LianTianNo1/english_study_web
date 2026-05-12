@@ -90,7 +90,8 @@ export interface SessionState {
   queue: WordRecord[];
   pool: DistractorPool;
   current: Question | null;
-  wrongIds: Set<number>;
+  wrongIds: Set<number>;          // 本会话中至少错过一次的词
+  skippedIds: Set<number>;        // 用户主动跳过的词
   totalAttempts: number;
   correctAttempts: number;
   passed: WordRecord[];
@@ -103,10 +104,22 @@ export function initSession(words: WordRecord[]): SessionState {
     pool,
     current: null,
     wrongIds: new Set(),
+    skippedIds: new Set(),
     totalAttempts: 0,
     correctAttempts: 0,
     passed: [],
   };
+}
+
+/** 跳过当前词——放队尾，不计入正误，不入错题 */
+export function skipCurrent(state: SessionState): SessionState {
+  if (state.queue.length === 0) return state;
+  const queue = state.queue.slice();
+  const head = queue.shift()!;
+  queue.push(head);
+  const skippedIds = new Set(state.skippedIds);
+  if (head.id !== undefined) skippedIds.add(head.id);
+  return { ...state, queue, skippedIds };
 }
 
 export function nextQuestion(state: SessionState): Question | null {

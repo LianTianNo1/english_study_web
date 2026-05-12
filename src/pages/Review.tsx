@@ -6,7 +6,7 @@ import { sessionsRepo } from '@/db/repositories/sessions';
 import type { ProgressRecord, WordRecord } from '@/db/types';
 import { INITIAL_SRS, nextReviewAt, sm2, type Quality } from '@/features/srs/sm2';
 import { useSettings } from '@/stores/settingsStore';
-import { Volume2, Trophy, Eye } from 'lucide-react';
+import { Volume2, Trophy, Eye, Star } from 'lucide-react';
 import { speak } from '@/lib/tts';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +34,13 @@ export function Review() {
       setStartTime(Date.now());
     })();
   }, [loaded, dailyReviewLimit]);
+
+  // 自动朗读当前词
+  useEffect(() => {
+    if (!loaded || items.length === 0 || idx >= items.length) return;
+    const t = setTimeout(() => speak(items[idx].word.word), 200);
+    return () => clearTimeout(t);
+  }, [idx, items, loaded]);
 
   if (!loaded) return null;
   const current = items[idx];
@@ -77,6 +84,10 @@ export function Review() {
     const ns = sm2(quality, prev);
     const now = Date.now();
     const isCorrect = quality >= 3;
+    // 标记错题：忘了 (quality=0) 计入错题本
+    if (!isCorrect && c.word.id !== undefined) {
+      await progressRepo.markWrong(c.word.id, c.word.levelId);
+    }
     await progressRepo.upsert({
       ...c.progress,
       status: ns.repetitions >= 5 && ns.interval >= 30 ? 'mastered' : 'review',
@@ -113,8 +124,19 @@ export function Review() {
       <div className="paper-card animate-fade-up text-center">
         <div className="flex items-baseline justify-center gap-2">
           <h3 className="font-display text-5xl font-black tracking-tight text-ink md:text-6xl">{current.word.word}</h3>
-          <button onClick={() => speak(current.word.word)} className="btn-icon">
+          <button onClick={() => speak(current.word.word)} className="btn-icon" title="朗读">
             <Volume2 size={14} />
+          </button>
+          <button
+            onClick={async () => {
+              if (current.word.id === undefined) return;
+              const ok = await progressRepo.toggleStar(current.word.id);
+              setItems((arr) => arr.map((it) => it.word.id === current.word.id ? { ...it, progress: { ...it.progress, starred: ok } } : it));
+            }}
+            className={cn('btn-icon', current.progress.starred && 'border-persimmon text-persimmon')}
+            title="标记难词"
+          >
+            <Star size={14} className={cn(current.progress.starred && 'fill-persimmon')} />
           </button>
         </div>
 

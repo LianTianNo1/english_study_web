@@ -3,10 +3,11 @@ import { LEVELS, type LevelId } from '@/db/types';
 import { useSettings, type AIProvider, type AIEndpoint, type LearnOrder } from '@/stores/settingsStore';
 import { db } from '@/db/schema';
 import { getLevelCount, importLevel } from '@/db/importer';
-import { Download, RefreshCw, Trash2, Volume2, Sparkles, Loader2, Check } from 'lucide-react';
+import { Download, RefreshCw, Trash2, Volume2, Sparkles, Loader2, Check, Upload, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { listVoices, speak, whenVoicesReady, type VoiceInfo } from '@/lib/tts';
 import { fetchModels } from '@/lib/ai';
+import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportReport, type ImportStrategy } from '@/lib/backup';
 
 export function Settings() {
   const {
@@ -21,6 +22,12 @@ export function Settings() {
   const [models, setModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelError, setModelError] = useState('');
+  const [includeSessions, setIncludeSessions] = useState(true);
+  const [includeSettingsInExport, setIncludeSettingsInExport] = useState(true);
+  const [importStrategy, setImportStrategy] = useState<ImportStrategy>('merge');
+  const [importReport, setImportReport] = useState<ImportReport | null>(null);
+  const [importError, setImportError] = useState('');
+  const [importing2, setImporting2] = useState(false);
 
   useEffect(() => {
     whenVoicesReady(() => setVoices(listVoices()));
@@ -47,21 +54,33 @@ export function Settings() {
   }
 
   async function exportBackup() {
-    const data = {
-      words: await db.words.toArray(),
-      progress: await db.progress.toArray(),
-      sessions: await db.sessions.toArray(),
-      grammarProgress: await db.grammarProgress.toArray(),
-      settings: await db.settings.toArray(),
-      exportedAt: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `english-hub-backup-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const bk = await buildBackup({
+      includeSettings: includeSettingsInExport,
+      includeSessions,
+    });
+    downloadBackup(bk);
+  }
+
+  async function handleImportFile(file: File) {
+    setImporting2(true);
+    setImportError('');
+    setImportReport(null);
+    try {
+      const text = await file.text();
+      const backup = parseBackup(text);
+      if (importStrategy === 'replace' && !confirm('替换模式将清空当前进度、会话与语法进度。确认继续？')) {
+        setImporting2(false);
+        return;
+      }
+      const report = await applyBackup(backup, importStrategy);
+      setImportReport(report);
+      // 重载设置（备份可能更改了用户偏好）
+      await useSettings.getState().load();
+    } catch (e) {
+      setImportError((e as Error).message);
+    } finally {
+      setImporting2(false);
+    }
   }
 
   async function resetAll() {
@@ -288,15 +307,89 @@ export function Settings() {
         </div>
       </Section>
 
-      {/* 数据管理 */}
-      <Section title="数据管理" sub="local data">
-        <div className="flex flex-wrap gap-2">
-          <button onClick={exportBackup} className="btn-ghost"><Download size={14} /> 导出备份</button>
+      {/* 数据备份 */}
+      <Section title="数据备份" sub="export · import">
+        {/* 导出 */}
+        <Field label="导出备份" hint="不含词表（可重新导入），不含 API Key">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Checkbox checked={includeSessions} onChange={setIncludeSessions} label="包含会话记录（热力图）" />
+              <Checkbox checked={includeSettingsInExport} onChange={setIncludeSettingsInExport} label="包含设置偏好" />
+            </div>
+            <button onClick={exportBackup} className="btn-ghost">
+              <Download size={14} /> 导出 JSON
+            </button>
+            <div className="flex items-start gap-2 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
+              <ShieldAlert size={14} className="mt-0.5 shrink-0 text-persimmon" />
+              <span>
+                备份只含学习进度 / 错题 / 难词 / 语法关卡 / 偏好。<b>不导出词表</b>（避免 30+MB 冗余），
+                <b>不导出 API Key</b>（避免凭据泄漏）。换设备后需要重新填 API Key。
+              </span>
+            </div>
+          </div>
+        </Field>
+
+        {/* 导入 */}
+        <Field label="导入备份" hint="从此前导出的 JSON 文件还原">
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              {(['merge', 'replace'] as ImportStrategy[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setImportStrategy(s)}
+                  className={cn(
+                    'rounded-sm border px-3 py-1.5 font-mono text-xs uppercase tracking-wider transition',
+                    importStrategy === s ? 'border-ink bg-ink text-paper' : 'border-paper3 text-ink2 hover:border-ink'
+                  )}
+                >
+                  {s === 'merge' ? '合并 (推荐)' : '替换 (危险)'}
+                </button>
+              ))}
+              <span className="self-center font-mono text-[10px] text-ink3">
+                {importStrategy === 'merge' ? '保留现有数据，按 wordId/lessonId 去重更新' : '清空后再导入（无法恢复）'}
+              </span>
+            </div>
+            <label className="btn-ghost cursor-pointer w-fit">
+              {importing2 ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              选择 JSON 文件
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleImportFile(f);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            {importError && (
+              <div className="rounded-md border border-crimson bg-crimson-50 p-3 text-sm text-crimson">{importError}</div>
+            )}
+            {importReport && (
+              <div className="rounded-md border border-moss bg-moss-50/50 p-3 text-sm text-moss-700">
+                <div className="font-semibold">✓ 导入成功</div>
+                <ul className="mt-1 ml-4 list-disc space-y-0.5 text-xs">
+                  <li>学习进度 · {importReport.progress} 条</li>
+                  <li>会话记录 · {importReport.sessions} 条</li>
+                  <li>语法关卡 · {importReport.grammarProgress} 节</li>
+                  <li>设置偏好 · {importReport.settings} 项</li>
+                  {importReport.skippedSettings.length > 0 && (
+                    <li className="text-ink3">跳过：{importReport.skippedSettings.join('、')}</li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Field>
+
+        <Field label="重置所有数据" hint="不可逆操作">
           <button onClick={resetAll} className="btn border border-crimson text-crimson hover:bg-crimson-50">
-            <Trash2 size={14} /> 重置所有数据
+            <Trash2 size={14} /> 删库并回到 Onboarding
           </button>
-        </div>
-        <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-ink3">
+        </Field>
+
+        <p className="font-mono text-[10px] uppercase tracking-wider text-ink3">
           data lives in indexeddb · clearing site data will erase progress
         </p>
       </Section>
@@ -379,6 +472,23 @@ function OrderTile({ value, active, title, sub, onClick }: { value: LearnOrder; 
         <div className="text-xs text-ink3">{sub}</div>
       </div>
     </button>
+  );
+}
+
+function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (b: boolean) => void; label: string }) {
+  return (
+    <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-ink2">
+      <span
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'grid h-4 w-4 place-items-center rounded-sm border transition',
+          checked ? 'border-ink bg-ink text-paper' : 'border-paper3 bg-paper'
+        )}
+      >
+        {checked && <Check size={10} />}
+      </span>
+      <span onClick={() => onChange(!checked)}>{label}</span>
+    </label>
   );
 }
 

@@ -32,4 +32,33 @@ export const progressRepo = {
     const recs = await db.progress.where('levelId').equals(levelId).toArray();
     return new Set(recs.map((r) => r.wordId));
   },
+
+  async toggleStar(wordId: number): Promise<boolean> {
+    const r = await this.getByWordId(wordId);
+    if (!r?.id) return false;
+    const next = !r.starred;
+    await db.progress.update(r.id, { starred: next });
+    return next;
+  },
+
+  async markWrong(wordId: number, levelId: LevelId): Promise<void> {
+    const r = await this.getByWordId(wordId);
+    if (r?.id) {
+      await db.progress.update(r.id, {
+        wrongCount: (r.wrongCount ?? 0) + 1,
+        lastWrongAt: Date.now(),
+      });
+    }
+  },
+
+  async starredWords(): Promise<ProgressRecord[]> {
+    return db.progress.filter((r) => r.starred === true).toArray();
+  },
+
+  async wrongWords(limit = 200): Promise<ProgressRecord[]> {
+    const all = await db.progress.filter((r) => (r.wrongCount ?? 0) > 0).toArray();
+    return all
+      .sort((a, b) => (b.lastWrongAt ?? 0) - (a.lastWrongAt ?? 0))
+      .slice(0, limit);
+  },
 };
