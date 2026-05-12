@@ -110,17 +110,23 @@ function CellsMode({ answer, onSubmit, revealed, onContinue, hint, autoFocus = t
     }
   };
 
-  // 全局回车继续（揭晓状态）
+  // 全局回车继续（揭晓状态）—— 延迟挂载 + 忽略键盘自动重复，避免"长按 Enter 把错误信息跳过"
   useEffect(() => {
     if (!revealed || revealed.correct) return;
+    let armed = false;
+    const armTimer = setTimeout(() => { armed = true; }, 300);
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        onContinue?.();
-      }
+      if (e.key !== 'Enter') return;
+      if (e.repeat) return;   // 忽略 OS 自动重复
+      if (!armed) return;      // 提交那一下的 Enter 不立刻生效
+      e.preventDefault();
+      onContinue?.();
     }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      clearTimeout(armTimer);
+      window.removeEventListener('keydown', onKey);
+    };
   }, [revealed, onContinue]);
 
   // 渲染每个字符方格
@@ -182,29 +188,32 @@ function CellsMode({ answer, onSubmit, revealed, onContinue, hint, autoFocus = t
   });
 
   return (
-    <div ref={padRef} className="relative">
-      {/* 隐藏 input 接收按键 */}
-      <input
-        ref={inputRef}
-        value={text}
-        onChange={(e) => handleChange(e.target.value)}
-        onKeyDown={handleKey}
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        className="absolute inset-0 z-0 h-full w-full cursor-text opacity-0"
-        aria-label="answer"
-      />
+    <div ref={padRef}>
+      {/* 输入区：仅 cells + 隐藏 input 共占一个相对定位容器，不再覆盖底部 */}
       <div
+        className="relative"
         onClick={() => inputRef.current?.focus()}
-        className="relative z-10 flex flex-wrap items-end justify-center gap-1.5 px-4 py-6"
       >
-        {cells}
-        {/* 印章 */}
-        {revealed && revealed.correct && (
-          <div className="stamp">APPROVED</div>
-        )}
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKey}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          disabled={!!revealed}
+          className={cn(
+            'absolute inset-0 z-0 h-full w-full cursor-text opacity-0',
+            revealed && 'pointer-events-none'
+          )}
+          aria-label="answer"
+        />
+        <div className="relative z-10 flex flex-wrap items-end justify-center gap-1.5 px-4 py-6">
+          {cells}
+          {revealed && revealed.correct && <div className="stamp">APPROVED</div>}
+        </div>
       </div>
 
       {hint && (
@@ -287,14 +296,20 @@ function FreeMode({ answer, onSubmit, revealed, onContinue, hint, placeholder, a
 
   useEffect(() => {
     if (!revealed || revealed.correct) return;
+    let armed = false;
+    const armTimer = setTimeout(() => { armed = true; }, 300);
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        onContinue?.();
-      }
+      if (e.key !== 'Enter') return;
+      if (e.repeat) return;
+      if (!armed) return;
+      e.preventDefault();
+      onContinue?.();
     }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      clearTimeout(armTimer);
+      window.removeEventListener('keydown', onKey);
+    };
   }, [revealed, onContinue]);
 
   return (

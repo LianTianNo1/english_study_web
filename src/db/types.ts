@@ -83,12 +83,14 @@ export interface SettingsRecord {
   value: unknown;
 }
 
-/** AI 生成的巧记 / 助记法（按 wordId 缓存，避免重复消耗 token） */
+/** AI 生成的巧记 / 助记法 / 音标 / 例句（按 wordId 缓存，避免重复消耗 token） */
 export interface MnemonicRecord {
   wordId: number;
   word: string;
   tip: string;          // 巧记口诀（一句话，<= 30 字）
   detail?: string;      // 详细记忆方法（多句话）
+  ipa?: string;         // 音标 (国际音标 IPA)
+  examples?: { en: string; zh: string }[];  // 2-3 个例句
   createdAt: number;
-  model?: string;       // 使用的模型，便于将来重新生成
+  model?: string;
 }

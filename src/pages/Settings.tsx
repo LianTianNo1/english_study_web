@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LEVELS, type LevelId } from '@/db/types';
-import { useSettings, type AIProvider, type AIEndpoint, type LearnOrder } from '@/stores/settingsStore';
+import { useSettings, type AIProvider, type AIEndpoint, type LearnOrder, type ReviewAlgorithm } from '@/stores/settingsStore';
 import { db } from '@/db/schema';
 import { getLevelCount, importLevel } from '@/db/importer';
 import { Download, RefreshCw, Trash2, Volume2, Sparkles, Loader2, Check, Upload, ShieldAlert } from 'lucide-react';
@@ -11,8 +11,8 @@ import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportRepor
 
 export function Settings() {
   const {
-    activeLevel, dailyNewWords, dailyReviewLimit, learnOrder, sfxEnabled, tts, ai,
-    setActiveLevel, setDailyNewWords, setDailyReviewLimit, setLearnOrder, setSfxEnabled, setTTS, setAI, loaded,
+    activeLevel, dailyNewWords, dailyReviewLimit, learnOrder, reviewAlgorithm, sfxEnabled, tts, ai,
+    setActiveLevel, setDailyNewWords, setDailyReviewLimit, setLearnOrder, setReviewAlgorithm, setSfxEnabled, setTTS, setAI, loaded,
   } = useSettings();
 
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -24,6 +24,7 @@ export function Settings() {
   const [modelError, setModelError] = useState('');
   const [includeSessions, setIncludeSessions] = useState(true);
   const [includeSettingsInExport, setIncludeSettingsInExport] = useState(true);
+  const [includeWords, setIncludeWords] = useState(false);
   const [importStrategy, setImportStrategy] = useState<ImportStrategy>('merge');
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [importError, setImportError] = useState('');
@@ -57,6 +58,7 @@ export function Settings() {
     const bk = await buildBackup({
       includeSettings: includeSettingsInExport,
       includeSessions,
+      includeWords,
     });
     downloadBackup(bk);
   }
@@ -141,6 +143,28 @@ export function Settings() {
           <NumField label="每日新词目标" value={dailyNewWords} onChange={setDailyNewWords} min={5} max={100} />
           <NumField label="每日复习上限" value={dailyReviewLimit} onChange={setDailyReviewLimit} min={10} max={500} />
         </div>
+
+        <Field label="复习算法" hint="决定每个词的下次复习时间">
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:max-w-2xl">
+              <AlgoTile
+                active={reviewAlgorithm === 'sm2'}
+                title="SM-2（自适应）"
+                sub="SuperMemo-2 算法 · 根据每题的难易自评（忘了/模糊/记住）动态调整间隔，长期更高效。"
+                onClick={() => setReviewAlgorithm('sm2')}
+              />
+              <AlgoTile
+                active={reviewAlgorithm === 'ebbinghaus'}
+                title="艾宾浩斯（固定）"
+                sub="经典遗忘曲线 · 固定间隔 5min → 30min → 12h → 1d → 2d → 4d → 7d → 15d → 30d → 60d，节奏清晰可预期。"
+                onClick={() => setReviewAlgorithm('ebbinghaus')}
+              />
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-wider text-ink3">
+              提示 · sm-2 本质上也基于艾宾浩斯曲线，只是把固定间隔升级为根据你的表现自适应。
+            </p>
+          </div>
+        </Field>
 
         <Field label="打字机音效" hint="拼写/填空/翻译时键击发出复古打字声，答对一串上行音，答错一声闷响">
           <div className="flex items-center gap-3">
@@ -351,11 +375,12 @@ export function Settings() {
       {/* 数据备份 */}
       <Section title="数据备份" sub="export · import">
         {/* 导出 */}
-        <Field label="导出备份" hint="不含词表（可重新导入），不含 API Key">
+        <Field label="导出备份" hint="不含 API Key（自动脱敏）">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               <Checkbox checked={includeSessions} onChange={setIncludeSessions} label="包含会话记录（热力图）" />
               <Checkbox checked={includeSettingsInExport} onChange={setIncludeSettingsInExport} label="包含设置偏好" />
+              <Checkbox checked={includeWords} onChange={setIncludeWords} label="包含词库本体 (大 ⚠)" />
             </div>
             <button onClick={exportBackup} className="btn-ghost">
               <Download size={14} /> 导出 JSON
@@ -363,8 +388,9 @@ export function Settings() {
             <div className="flex items-start gap-2 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
               <ShieldAlert size={14} className="mt-0.5 shrink-0 text-persimmon" />
               <span>
-                备份只含学习进度 / 错题 / 难词 / 语法关卡 / 偏好。<b>不导出词表</b>（避免 30+MB 冗余），
-                <b>不导出 API Key</b>（避免凭据泄漏）。换设备后需要重新填 API Key。
+                默认只含 <b>学习进度 / 错题 / 难词 / 语法关卡 / AI 巧记 / 偏好</b>，体积约 100 KB。
+                勾选"词库本体"会额外打包已导入的词条（含全部释义和短语），换设备时可省去 5 分钟重新导入，
+                但单文件可达 <b>30+ MB</b>。<b>不导出 API Key</b>，换设备后需重填。
               </span>
             </div>
           </div>
@@ -415,6 +441,7 @@ export function Settings() {
                   <li>会话记录 · {importReport.sessions} 条</li>
                   <li>语法关卡 · {importReport.grammarProgress} 节</li>
                   <li>AI 巧记 · {importReport.mnemonics} 条</li>
+                  {importReport.words > 0 && <li>词条 · {importReport.words.toLocaleString()} 个</li>}
                   <li>设置偏好 · {importReport.settings} 项</li>
                   {importReport.skippedSettings.length > 0 && (
                     <li className="text-ink3">跳过：{importReport.skippedSettings.join('、')}</li>
@@ -494,6 +521,26 @@ function RangeField(props: { label: string; value: number; min: number; max: num
         className="w-full accent-persimmon"
       />
     </Field>
+  );
+}
+
+function AlgoTile({ active, title, sub, onClick }: { active: boolean; title: string; sub: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'group flex items-start gap-3 rounded-md border p-3 text-left transition',
+        active ? 'border-ink bg-paper shadow-ink' : 'border-paper3 bg-paper hover:border-ink'
+      )}
+    >
+      <div className={cn('mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border', active ? 'border-ink bg-ink text-paper' : 'border-paper3')}>
+        {active && <Check size={12} />}
+      </div>
+      <div className="min-w-0">
+        <div className="font-display text-base font-bold text-ink">{title}</div>
+        <div className="mt-0.5 text-xs leading-snug text-ink3">{sub}</div>
+      </div>
+    </button>
   );
 }
 

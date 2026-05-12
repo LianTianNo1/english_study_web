@@ -7,7 +7,7 @@ import { progressRepo } from '@/db/repositories/progress';
 import { sessionsRepo } from '@/db/repositories/sessions';
 import { initSession, nextQuestion, submitAnswer, skipCurrent, type SessionState } from '@/features/learn-session/session';
 import { QuizCard } from '@/components/QuizCard';
-import { INITIAL_SRS, nextReviewAt, sm2 } from '@/features/srs/sm2';
+import { INITIAL_SRS, scheduleNext, nextReviewAtFor } from '@/features/srs';
 import { ArrowRight, Trophy, Volume2, Star, Clock, Lightbulb, Loader2, AlertCircle } from 'lucide-react';
 import { speak } from '@/lib/tts';
 import { cn, shuffle } from '@/lib/utils';
@@ -20,7 +20,7 @@ type Stage = 'preview' | 'quiz' | 'done';
 
 export function Learn() {
   const navigate = useNavigate();
-  const { activeLevel, dailyNewWords, learnOrder, ai, loaded } = useSettings();
+  const { activeLevel, dailyNewWords, learnOrder, reviewAlgorithm, ai, loaded } = useSettings();
   const [stage, setStage] = useState<Stage>('preview');
   const [newWords, setNewWords] = useState<WordRecord[]>([]);
   const [session, setSession] = useState<SessionState | null>(null);
@@ -118,6 +118,8 @@ export function Learn() {
             word: w.word,
             tip: m.tip,
             detail: m.detail,
+            ipa: m.ipa,
+            examples: m.examples,
             createdAt: now,
             model: ai.model,
           };
@@ -212,7 +214,7 @@ export function Learn() {
       for (const w of newWords) {
         if (w.id === undefined) continue;
         const wrong = next.wrongIds.has(w.id);
-        const state = sm2(wrong ? 3 : 4, INITIAL_SRS);
+        const state = scheduleNext(wrong ? 3 : 4, INITIAL_SRS, reviewAlgorithm);
         const prev = await progressRepo.getByWordId(w.id);
         await progressRepo.upsert({
           ...(prev ?? {}),
@@ -223,8 +225,8 @@ export function Learn() {
           easeFactor: state.easeFactor,
           repetitions: state.repetitions,
           lastReviewAt: now,
-          nextReviewAt: nextReviewAt(state, now),
-          // ⭐ 关键修复：错题计数累加，从未学过的词起始为 0
+          nextReviewAt: nextReviewAtFor(state, reviewAlgorithm, now),
+          // ⭐ 错题计数累加
           wrongCount: (prev?.wrongCount ?? 0) + (wrong ? 1 : 0),
           lastWrongAt: wrong ? now : (prev?.lastWrongAt ?? 0),
           starred: prev?.starred ?? false,
@@ -344,6 +346,9 @@ export function Learn() {
               <button onClick={() => speak(w.word)} className="btn-icon" title="朗读 (Space)">
                 <Volume2 size={14} />
               </button>
+              {wordMnemonic?.ipa && (
+                <code className="font-mono text-base text-ink2">{wordMnemonic.ipa}</code>
+              )}
             </div>
             <button
               onClick={() => toggleStar(w)}
@@ -364,11 +369,20 @@ export function Learn() {
           {w.phrases.length > 0 && (
             <div className="mt-5">
               <div className="divider !my-3">phrases</div>
-              <ul className="space-y-1.5 text-sm">
+              <ul className="space-y-2 text-sm">
                 {w.phrases.slice(0, 3).map((p, i) => (
-                  <li key={i}>
-                    <span className="font-mono font-semibold text-ink">{p.phrase}</span>
-                    <span className="text-ink3"> — {p.translation}</span>
+                  <li key={i} className="flex items-start gap-2">
+                    <button
+                      onClick={() => speak(p.phrase)}
+                      className="btn-icon !h-6 !w-6 shrink-0"
+                      title="朗读词组"
+                    >
+                      <Volume2 size={10} />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-mono font-semibold text-ink">{p.phrase}</span>
+                      <span className="text-ink3"> — {p.translation}</span>
+                    </div>
                   </li>
                 ))}
               </ul>

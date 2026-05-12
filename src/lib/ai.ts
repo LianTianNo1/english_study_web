@@ -183,8 +183,10 @@ export async function generateGrammarExercises(
 /** 批量生成助记，一次 API 调用搞定一组词 */
 export interface MnemonicItem {
   word: string;
-  tip: string;       // 一句话巧记（<= 30 字）
-  detail?: string;   // 详细记忆方法
+  tip: string;            // 一句话巧记（<= 30 字）
+  detail?: string;        // 详细记忆方法
+  ipa?: string;           // 国际音标
+  examples?: { en: string; zh: string }[];  // 2 个例句
 }
 
 export async function batchGenerateMnemonics(
@@ -198,20 +200,30 @@ export async function batchGenerateMnemonics(
     [
       {
         role: 'system',
-        content: `你是中文母语者的英语记忆教练。为每个英文单词输出"巧记"（一句话口诀或联想，限 30 字内）和可选的"详细记忆方法"（拆词根/谐音/场景，1-3 句）。
-严格输出 JSON 数组，长度与输入完全一致，不要有多余文字或代码块标记。`,
+        content: `你是中文母语者的英语记忆教练。为每个英文单词输出：①IPA 音标 ②巧记口诀（30 字内）③详细记忆方法（1-3 句，可选）④2 个由浅入深的例句（含中文翻译）。
+严格输出 JSON 数组，长度与输入完全一致，不要任何额外文字、解释或代码块标记。`,
       },
       {
         role: 'user',
         content: `${list}
 
 输出 JSON 数组，每项格式：
-{ "word": "ability", "tip": "abil(能力)+ity=能干的本事", "detail": "abil 来自 able(能够), -ity 是抽象名词后缀" }
+{
+  "word": "ability",
+  "ipa": "/əˈbɪləti/",
+  "tip": "abil(能力)+ity=能干的本事",
+  "detail": "abil 来自 able(能够), -ity 是抽象名词后缀",
+  "examples": [
+    { "en": "She has the ability to lead.", "zh": "她有领导能力。" },
+    { "en": "His musical ability is remarkable.", "zh": "他的音乐天赋很出众。" }
+  ]
+}
 
-要求：
-- tip 必须有，简短易记，能在练习时一眼复习
-- detail 可选，进一步加深印象
-- 严格保持顺序对应`,
+严格要求：
+- ipa 必须用国际音标符号（重音符 ˈ、长音 ː），不要用 KK 或字母拼音
+- tip 必须简短易记
+- examples 给 2 个例句，必须包含 zh 翻译
+- 严格保持顺序对应输入`,
       },
     ],
     cfg,
@@ -225,6 +237,13 @@ export async function batchGenerateMnemonics(
       word: String(x.word ?? ''),
       tip: String(x.tip ?? ''),
       detail: x.detail ? String(x.detail) : undefined,
+      ipa: x.ipa ? String(x.ipa) : undefined,
+      examples: Array.isArray(x.examples)
+        ? x.examples
+            .map((e: any) => ({ en: String(e?.en ?? ''), zh: String(e?.zh ?? '') }))
+            .filter((e: { en: string; zh: string }) => e.en && e.zh)
+            .slice(0, 3)
+        : undefined,
     })).filter((x) => x.word && x.tip);
   } catch {
     throw new AIError('AI 返回内容无法解析为巧记数组，请重试或换个模型');

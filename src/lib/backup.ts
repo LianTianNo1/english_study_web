@@ -1,7 +1,7 @@
 import { db } from '@/db/schema';
-import type { ProgressRecord, SessionRecord, GrammarProgressRecord, SettingsRecord, MnemonicRecord } from '@/db/types';
+import type { ProgressRecord, SessionRecord, GrammarProgressRecord, SettingsRecord, MnemonicRecord, WordRecord } from '@/db/types';
 
-/** 备份只包含"用户学习成果" —— 不包含词库（可重新导入）和敏感凭据（API Key） */
+/** 备份默认只含"用户学习成果"——可选包含词库本体（用于换设备时跳过 5 分钟导入） */
 export interface BackupV1 {
   version: 1;
   exportedAt: string;
@@ -10,10 +10,11 @@ export interface BackupV1 {
   sessions: SessionRecord[];
   grammarProgress: GrammarProgressRecord[];
   settings: SettingsRecord[];
-  mnemonics?: MnemonicRecord[];  // v0.3+ 新增
+  mnemonics?: MnemonicRecord[];
+  words?: WordRecord[];        // v0.4+ 可选含词库
 }
 
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.4.0';
 
 /* ---------- 敏感字段脱敏 ---------- */
 const SENSITIVE_SETTING_KEYS = new Set(['ai']); // ai 配置含 apiKey
@@ -33,16 +34,18 @@ function sanitizeSettings(settings: SettingsRecord[]): SettingsRecord[] {
 export interface ExportOptions {
   includeSettings?: boolean;
   includeSessions?: boolean;
+  includeWords?: boolean;  // 默认 false —— 体积可达 30+ MB
 }
 
 export async function buildBackup(opts: ExportOptions = {}): Promise<BackupV1> {
-  const { includeSettings = true, includeSessions = true } = opts;
-  const [progress, sessions, grammarProgress, settings, mnemonics] = await Promise.all([
+  const { includeSettings = true, includeSessions = true, includeWords = false } = opts;
+  const [progress, sessions, grammarProgress, settings, mnemonics, words] = await Promise.all([
     db.progress.toArray(),
     includeSessions ? db.sessions.toArray() : Promise.resolve([]),
     db.grammarProgress.toArray(),
     includeSettings ? db.settings.toArray() : Promise.resolve([]),
     db.mnemonics.toArray(),
+    includeWords ? db.words.toArray() : Promise.resolve(undefined),
   ]);
   return {
     version: 1,
@@ -53,6 +56,7 @@ export async function buildBackup(opts: ExportOptions = {}): Promise<BackupV1> {
     grammarProgress,
     settings: sanitizeSettings(settings),
     mnemonics,
+    ...(words ? { words } : {}),
   };
 }
 
@@ -78,6 +82,7 @@ export interface ImportReport {
   grammarProgress: number;
   settings: number;
   mnemonics: number;
+  words: number;
   skippedSettings: string[];
 }
 
@@ -109,16 +114,40 @@ export async function applyBackup(backup: BackupV1, strategy: ImportStrategy): P
     grammarProgress: 0,
     settings: 0,
     mnemonics: 0,
+    words: 0,
     skippedSettings: [],
   };
 
-  await db.transaction('rw', [db.progress, db.sessions, db.grammarProgress, db.settings, db.mnemonics], async () => {
+  await db.transaction('rw', [db.progress, db.sessions, db.grammarProgress, db.settings, db.mnemonics, db.words], async () => {
     if (strategy === 'replace') {
       await db.progress.clear();
       await db.sessions.clear();
       await db.grammarProgress.clear();
       await db.mnemonics.clear();
+      // 词库只在备份包含 words 时才清空+替换（避免误清空已导入的词库）
+      if (backup.words && backup.words.length > 0) {
+        await db.words.clear();
+      }
       // settings 不全清——保留 AI/TTS 等本地凭据
+    }
+
+    // words: 备份含才导入；按 [levelId, orderIndex] 去重处理
+    if (backup.words && backup.words.length > 0) {
+      if (strategy === 'merge') {
+        // merge: 仅在词条不存在时插入（按 levelId+orderIndex 唯一）
+        const existingPairs = new Set<string>();
+        const all = await db.words.toArray();
+        all.forEach((w) => existingPairs.add(`${w.levelId}:${w.orderIndex}`));
+        const toAdd = backup.words
+          .filter((w) => !existingPairs.has(`${w.levelId}:${w.orderIndex}`))
+          .map(({ id, ...rest }) => rest as WordRecord);
+        if (toAdd.length > 0) await db.words.bulkAdd(toAdd);
+        report.words = toAdd.length;
+      } else {
+        const toAdd = backup.words.map(({ id, ...rest }) => rest as WordRecord);
+        await db.words.bulkAdd(toAdd);
+        report.words = toAdd.length;
+      }
     }
 
     // progress: 按 wordId 唯一

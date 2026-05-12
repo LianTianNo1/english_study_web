@@ -121,6 +121,9 @@ export function Library() {
                 <button onClick={() => speak(selected.word)} className="btn-icon !h-8 !w-8" title="朗读">
                   <Volume2 size={14} />
                 </button>
+                {mnemonic?.ipa && (
+                  <code className="ml-1 font-mono text-sm text-ink2">{mnemonic.ipa}</code>
+                )}
               </div>
               <div className="mt-4 space-y-2">
                 {selected.translations.map((t, i) => (
@@ -135,9 +138,18 @@ export function Library() {
                   <div className="divider !my-3">collocations</div>
                   <ul className="space-y-2">
                     {selected.phrases.slice(0, 8).map((p, i) => (
-                      <li key={i}>
-                        <div className="font-mono text-sm font-semibold text-ink">{p.phrase}</div>
-                        <div className="text-xs text-ink3">{p.translation}</div>
+                      <li key={i} className="flex items-start gap-2">
+                        <button
+                          onClick={() => speak(p.phrase)}
+                          className="btn-icon !h-7 !w-7 shrink-0"
+                          title="朗读词组"
+                        >
+                          <Volume2 size={11} />
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-mono text-sm font-semibold text-ink">{p.phrase}</div>
+                          <div className="text-xs text-ink3">{p.translation}</div>
+                        </div>
                       </li>
                     ))}
                   </ul>

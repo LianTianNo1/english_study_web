@@ -5,6 +5,7 @@ import type { LevelId } from '@/db/types';
 export type LearnOrder = 'sequential' | 'random';
 export type AIProvider = 'openai' | 'gemini';
 export type AIEndpoint = 'chat' | 'responses';
+export type ReviewAlgorithm = 'sm2' | 'ebbinghaus';
 
 export interface AIConfig {
   enabled: boolean;
@@ -49,6 +50,7 @@ interface SettingsState {
   dailyNewWords: number;
   dailyReviewLimit: number;
   learnOrder: LearnOrder;
+  reviewAlgorithm: ReviewAlgorithm;
   sfxEnabled: boolean;
   tts: TTSConfig;
   ai: AIConfig;
@@ -58,6 +60,7 @@ interface SettingsState {
   setDailyNewWords: (n: number) => Promise<void>;
   setDailyReviewLimit: (n: number) => Promise<void>;
   setLearnOrder: (o: LearnOrder) => Promise<void>;
+  setReviewAlgorithm: (a: ReviewAlgorithm) => Promise<void>;
   setSfxEnabled: (b: boolean) => Promise<void>;
   setTTS: (cfg: Partial<TTSConfig>) => Promise<void>;
   setAI: (cfg: Partial<AIConfig>) => Promise<void>;
@@ -68,16 +71,18 @@ export const useSettings = create<SettingsState>((set, get) => ({
   dailyNewWords: 20,
   dailyReviewLimit: 100,
   learnOrder: 'sequential',
+  reviewAlgorithm: 'sm2',
   sfxEnabled: false,
   tts: DEFAULT_TTS,
   ai: DEFAULT_AI,
   loaded: false,
   async load() {
-    const [lvl, dnw, drl, order, sfx, tts, ai] = await Promise.all([
+    const [lvl, dnw, drl, order, algo, sfx, tts, ai] = await Promise.all([
       getSetting<LevelId>('activeLevel', 'junior'),
       getSetting<number>('dailyNewWords', 20),
       getSetting<number>('dailyReviewLimit', 100),
       getSetting<LearnOrder>('learnOrder', 'sequential'),
+      getSetting<ReviewAlgorithm>('reviewAlgorithm', 'sm2'),
       getSetting<boolean>('sfxEnabled', false),
       getSetting<TTSConfig>('tts', DEFAULT_TTS),
       getSetting<AIConfig>('ai', DEFAULT_AI),
@@ -87,6 +92,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
       dailyNewWords: dnw,
       dailyReviewLimit: drl,
       learnOrder: order,
+      reviewAlgorithm: algo,
       sfxEnabled: sfx,
       tts: { ...DEFAULT_TTS, ...tts },
       ai: { ...DEFAULT_AI, ...ai },
@@ -108,6 +114,10 @@ export const useSettings = create<SettingsState>((set, get) => ({
   async setLearnOrder(o) {
     await setSetting('learnOrder', o);
     set({ learnOrder: o });
+  },
+  async setReviewAlgorithm(a) {
+    await setSetting('reviewAlgorithm', a);
+    set({ reviewAlgorithm: a });
   },
   async setSfxEnabled(b) {
     await setSetting('sfxEnabled', b);

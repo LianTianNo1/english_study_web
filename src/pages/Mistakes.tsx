@@ -6,7 +6,8 @@ import { wordsRepo } from '@/db/repositories/words';
 import { sessionsRepo } from '@/db/repositories/sessions';
 import { QuizCard } from '@/components/QuizCard';
 import { initSession, nextQuestion, submitAnswer, skipCurrent, type SessionState } from '@/features/learn-session/session';
-import { INITIAL_SRS, nextReviewAt, sm2 } from '@/features/srs/sm2';
+import { INITIAL_SRS, scheduleNext, nextReviewAtFor } from '@/features/srs';
+import { useSettings } from '@/stores/settingsStore';
 import { ArrowRight, RotateCw, Star, Trophy, Volume2 } from 'lucide-react';
 import { speak } from '@/lib/tts';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ interface Item {
 
 export function Mistakes() {
   const navigate = useNavigate();
+  const reviewAlgorithm = useSettings((s) => s.reviewAlgorithm);
   const [tab, setTab] = useState<Tab>('wrong');
   const [items, setItems] = useState<Item[]>([]);
   const [stage, setStage] = useState<Stage>('list');
@@ -65,11 +67,11 @@ export function Mistakes() {
         const wrong = next.wrongIds.has(it.word.id);
         if (wrong) continue; // 错题本里再次答错的不算掌握，保留状态
         const prev = it.progress;
-        const ns = sm2(4, {
+        const ns = scheduleNext(4, {
           repetitions: prev.repetitions,
           interval: prev.interval || 1,
           easeFactor: prev.easeFactor || INITIAL_SRS.easeFactor,
-        });
+        }, reviewAlgorithm);
         await progressRepo.upsert({
           ...prev,
           interval: ns.interval,
@@ -77,7 +79,7 @@ export function Mistakes() {
           repetitions: ns.repetitions,
           status: prev.status === 'mastered' ? 'mastered' : 'review',
           lastReviewAt: now,
-          nextReviewAt: nextReviewAt(ns, now),
+          nextReviewAt: nextReviewAtFor(ns, reviewAlgorithm, now),
         });
       }
       await sessionsRepo.log({

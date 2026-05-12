@@ -4,7 +4,7 @@ import { progressRepo } from '@/db/repositories/progress';
 import { wordsRepo } from '@/db/repositories/words';
 import { sessionsRepo } from '@/db/repositories/sessions';
 import type { ProgressRecord, WordRecord } from '@/db/types';
-import { INITIAL_SRS, nextReviewAt, sm2, type Quality } from '@/features/srs/sm2';
+import { INITIAL_SRS, scheduleNext, nextReviewAtFor, type Quality } from '@/features/srs';
 import { useSettings } from '@/stores/settingsStore';
 import { Volume2, Trophy, Eye, Star } from 'lucide-react';
 import { speak } from '@/lib/tts';
@@ -14,7 +14,7 @@ type Item = { progress: ProgressRecord; word: WordRecord };
 
 export function Review() {
   const navigate = useNavigate();
-  const { dailyReviewLimit, loaded } = useSettings();
+  const { dailyReviewLimit, reviewAlgorithm, loaded } = useSettings();
   const [items, setItems] = useState<Item[]>([]);
   const [idx, setIdx] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -81,10 +81,9 @@ export function Review() {
       interval: c.progress.interval,
       easeFactor: c.progress.easeFactor || INITIAL_SRS.easeFactor,
     };
-    const ns = sm2(quality, prev);
+    const ns = scheduleNext(quality, prev, reviewAlgorithm);
     const now = Date.now();
     const isCorrect = quality >= 3;
-    // 标记错题：忘了 (quality=0) 计入错题本
     if (!isCorrect && c.word.id !== undefined) {
       await progressRepo.markWrong(c.word.id, c.word.levelId);
     }
@@ -95,7 +94,7 @@ export function Review() {
       easeFactor: ns.easeFactor,
       repetitions: ns.repetitions,
       lastReviewAt: now,
-      nextReviewAt: nextReviewAt(ns, now),
+      nextReviewAt: nextReviewAtFor(ns, reviewAlgorithm, now),
     });
     setStats((s) => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
     setShowAnswer(false);

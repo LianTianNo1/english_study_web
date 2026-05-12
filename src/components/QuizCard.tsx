@@ -49,9 +49,12 @@ export function QuizCard({ question: q, onSubmit, onSkip, onToggleStar, starred,
 
   // 键盘快捷键：选项题 1-4，空格朗读，Esc 跳过，错误后 Enter 继续
   useEffect(() => {
+    let armed = false;
+    const armTimer = setTimeout(() => { armed = true; }, 250);
     function onKey(e: KeyboardEvent) {
+      if (e.repeat) return; // 忽略 OS 自动重复，避免"一回车飞过去"
       if (revealed && !revealed.correct) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && armed) {
           e.preventDefault();
           continueNext();
         }
@@ -75,7 +78,10 @@ export function QuizCard({ question: q, onSubmit, onSkip, onToggleStar, starred,
       }
     }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      clearTimeout(armTimer);
+      window.removeEventListener('keydown', onKey);
+    };
   }, [q, revealed, isChoice, onSkip]);
 
   return (
