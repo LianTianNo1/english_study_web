@@ -18,6 +18,19 @@ export interface GrammarExercise {
   hint?: string;           // 提示（翻译题里给关键词等）
 }
 
+/** 常见错误 / 易混点（"猜规律"之后展示，对比正确 vs 错误用法） */
+export interface CommonMistake {
+  wrong: string;   // 错误用法
+  right: string;   // 正确写法
+  reason: string;  // 简短解释
+}
+
+/** 用法说明（什么时候用，注意点） */
+export interface UsageNote {
+  title: string;   // 小标题，如"什么时候用"
+  body: string;    // 内容
+}
+
 export interface GrammarLesson {
   id: string;
   index: number;
@@ -32,6 +45,14 @@ export interface GrammarLesson {
     table?: { head: string[]; rows: string[][] };
   };
   exercises: GrammarExercise[];
+  /** 进阶题（深度学习模式才会出现，可选） */
+  advancedExercises?: GrammarExercise[];
+  /** 易错对比（揭晓公式后展示） */
+  mistakes?: CommonMistake[];
+  /** 用法说明 / 使用场景 */
+  usageNotes?: UsageNote[];
+  /** 关联课程 ID（学完推荐继续） */
+  relatedLessons?: string[];
 }
 
 export const GRAMMAR_LESSONS: GrammarLesson[] = [
@@ -43,24 +64,39 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
     scene: '想介绍自己叫小明？说"我是学生"？英文里有个"小帮手"叫 be 动词，专门负责连接"谁"和"是什么"。',
     examples: [
       { en: 'I am Xiao Ming.', zh: '我是小明。', highlight: ['am'] },
+      { en: 'I am twelve years old.', zh: '我十二岁。', highlight: ['am'] },
       { en: 'You are my friend.', zh: '你是我的朋友。', highlight: ['are'] },
+      { en: 'You are very kind.', zh: '你很善良。', highlight: ['are'] },
       { en: 'He is a teacher.', zh: '他是老师。', highlight: ['is'] },
       { en: 'She is happy.', zh: '她很开心。', highlight: ['is'] },
+      { en: 'It is a sunny day.', zh: '这是个晴天。', highlight: ['is'] },
       { en: 'We are students.', zh: '我们是学生。', highlight: ['are'] },
+      { en: 'They are good people.', zh: '他们是好人。', highlight: ['are'] },
     ],
     hint: '观察每句话里 be 动词形式（am/is/are）和前面的"谁"。它们之间有什么对应关系？',
     formula: {
       rule: 'be 动词随主语变形：I → am；He/She/It → is；You/We/They → are',
-      detail: '记住口诀：我是 am，他她它 is，你 we they 是 are。',
+      detail: '记住口诀：我是 am，他她它 is，你 we they 是 are。be 动词在句子里像一座桥，连接"谁"和"是什么 / 怎么样"。',
       table: {
-        head: ['主语', 'be 动词'],
+        head: ['主语', 'be 动词', '缩写'],
         rows: [
-          ['I', 'am'],
-          ['He / She / It', 'is'],
-          ['You / We / They', 'are'],
+          ['I', 'am', "I'm"],
+          ['He / She / It', 'is', "He's / She's / It's"],
+          ['You / We / They', 'are', "You're / We're / They're"],
         ],
       },
     },
+    mistakes: [
+      { wrong: 'I is happy.', right: 'I am happy.', reason: 'I 永远配 am，不和 is/are 搭配。' },
+      { wrong: 'She are my teacher.', right: 'She is my teacher.', reason: '第三人称单数 (he/she/it) 用 is。' },
+      { wrong: 'They is friends.', right: 'They are friends.', reason: '复数主语 (we/you/they) 用 are。' },
+      { wrong: 'Me is a student.', right: 'I am a student.', reason: '作主语必须用 I，me 只做宾语。' },
+    ],
+    usageNotes: [
+      { title: '什么时候用 be 动词', body: '描述"谁是什么"（身份、职业）、"怎么样"（状态、心情）、"在哪里"（位置）时都用 be 动词。形容词前面也常常需要 be。' },
+      { title: '缩写很常见', body: '日常英语里 I am 常写成 I\'m，She is 写成 She\'s。书面正式场合可以保留完整形式。' },
+      { title: '注意：单复数', body: '一个东西用 is，多个东西用 are。"This is a book." 和 "These are books." 对比体会一下。' },
+    ],
     exercises: [
       { type: 'choice', question: 'I ___ a student.', options: ['am', 'is', 'are'], answer: 'am' },
       { type: 'choice', question: 'She ___ my sister.', options: ['am', 'is', 'are'], answer: 'is' },
@@ -71,6 +107,14 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'translate', question: '把中文翻译成英文：他是医生。', hint: '关键词：he, doctor', answer: 'He is a doctor', explain: 'he 用 is；职业前加 a。' },
       { type: 'correction', question: '找出并改正错误：She are my teacher.', answer: 'She is my teacher', explain: 'She 是第三人称单数，be 动词用 is。' },
     ],
+    advancedExercises: [
+      { type: 'translate', question: '翻译：我的父母是老师。', hint: 'parents / teachers', answer: 'My parents are teachers', explain: 'parents 是复数，用 are；teacher 也变复数 teachers。' },
+      { type: 'translate', question: '翻译：今天天气不错。', hint: 'weather / nice / today', answer: 'The weather is nice today', explain: 'weather 不可数，用 is。' },
+      { type: 'correction', question: '找错：My brother and I am at home.', answer: 'My brother and I are at home', explain: '主语是两个人 (复数)，用 are。' },
+      { type: 'correction', question: '找错：The book on the desk are red.', answer: 'The book on the desk is red', explain: '主语 The book 单数，on the desk 是修饰，主语仍然用 is。' },
+      { type: 'reorder', question: '排序：', options: ['from', 'I', 'am', 'China', '.'], answer: 'I am from China .', explain: 'I + am + 介词短语；句号也是词块。' },
+    ],
+    relatedLessons: ['l02-pronouns', 'l05-have'],
   },
   {
     id: 'l02-pronouns',
@@ -100,6 +144,23 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'translate', question: '翻译：他们是学生。', hint: 'they / students', answer: 'They are students', explain: 'they 复数，be 用 are，名词复数加 s。' },
       { type: 'correction', question: 'Me is happy. （找错）', answer: 'I am happy', explain: '作主语只能用 I，不能用 Me。' },
     ],
+    mistakes: [
+      { wrong: 'Me likes apples.', right: 'I like apples.', reason: 'Me 是宾格，作主语只能用 I（主格）。' },
+      { wrong: 'Him is my brother.', right: 'He is my brother.', reason: 'Him 是宾格，作主语用 He。' },
+      { wrong: 'Her sings well.', right: 'She sings well.', reason: 'Her 是宾格，作主语用 She。' },
+    ],
+    usageNotes: [
+      { title: '主格 vs 宾格', body: '英语代词有"主格"和"宾格"两套：作主语 (做事的人) 用主格 I/he/she/we/they；作宾语 (被动作的对象) 用宾格 me/him/her/us/them。常见错误：把宾格放在句首。' },
+      { title: 'It 的两个用途', body: '① 指代物品或动物。② 表示天气、时间、距离：It is rainy. / It is 7 o\'clock.' },
+      { title: 'You 单复数同形', body: '英语 You 既可以是"你"也可以是"你们"，靠上下文判断；要强调"你们"可说 "You guys" / "You all"。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: 'Who is at the door? — ___ is John.', options: ['He', 'Him', 'His'], answer: 'He' },
+      { type: 'correction', question: '找错：Me and Tom are good friends.', answer: 'Tom and I are good friends', explain: '中文喜欢说"我和某某"，英文先说他人再说 I：Tom and I。' },
+      { type: 'translate', question: '翻译：天正在下雨。', hint: 'It / raining', answer: 'It is raining', explain: '描述天气用 it。' },
+      { type: 'reorder', question: '排序：', options: ['parents', 'My', 'kind', 'are', 'very'], answer: 'My parents are very kind', explain: 'My parents 复数用 are；very 修饰形容词放前面。' },
+    ],
+    relatedLessons: ['l01-be-verb', 'l03-plural'],
   },
   {
     id: 'l03-plural',
@@ -129,6 +190,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'correction', question: 'I see two dog. （找错）', answer: 'I see two dogs', explain: '两个就要复数 dogs。' },
       { type: 'reorder', question: '排序：', options: ['five', 'books', 'There', 'are'], answer: 'There are five books', explain: '复数前 be 用 are。' },
     ],
+    mistakes: [
+      { wrong: 'two dog', right: 'two dogs', reason: '>1 必须复数加 s。' },
+      { wrong: 'two boxs', right: 'two boxes', reason: '以 s/x/ch/sh 结尾要加 es。' },
+      { wrong: 'three babys', right: 'three babies', reason: '辅音 + y 结尾把 y 变 i 加 es。' },
+      { wrong: 'two mans', right: 'two men', reason: '不规则复数：man→men, woman→women, child→children。' },
+      { wrong: 'two waters', right: 'two glasses of water', reason: '不可数名词没有复数，需要用量词。' },
+    ],
+    usageNotes: [
+      { title: '可数 vs 不可数', body: '可以"一个一个数"的（apple, book, cat）有复数；液体、抽象概念（water, music, advice, information）不可数，没有复数，前面也不加 a/an。' },
+      { title: '常见不规则复数', body: 'man→men, woman→women, child→children, foot→feet, tooth→teeth, mouse→mice, fish→fish (单复同形)。' },
+      { title: '复数读音三种', body: '① 清辅音后读 /s/：books, cats ② 浊辅音/元音后读 /z/：dogs, cars ③ s/x/ch/sh/ce 后读 /ɪz/：buses, watches。' },
+    ],
+    advancedExercises: [
+      { type: 'fillblank', question: 'leaf 的复数：___', answer: 'leaves' },
+      { type: 'fillblank', question: 'tooth 的复数：___', answer: 'teeth' },
+      { type: 'translate', question: '翻译：桌上有些水。', hint: 'some / water / on the table', answer: 'There is some water on the table', explain: 'water 不可数用 is；some 表示一些。' },
+      { type: 'correction', question: '找错：I need some informations.', answer: 'I need some information', explain: 'information 不可数，没有复数形式。' },
+      { type: 'choice', question: 'How many ___ are there?', options: ['child', 'childs', 'children'], answer: 'children' },
+    ],
+    relatedLessons: ['l04-articles', 'l16-there-be'],
   },
   {
     id: 'l04-articles',
@@ -158,6 +239,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'correction', question: 'I bought a apple. （找错）', answer: 'I bought an apple', explain: 'apple 元音开头要用 an。' },
       { type: 'reorder', question: '排序：', options: ['the', 'desk', 'on', 'is', 'The', 'book'], answer: 'The book is on the desk', explain: '"那本特定的书"用 the；"那张桌子"也用 the。' },
     ],
+    mistakes: [
+      { wrong: 'an university', right: 'a university', reason: 'university 读音 /ˈjuː/ 开头是辅音 y，用 a。' },
+      { wrong: 'a hour', right: 'an hour', reason: 'hour 中 h 不发音，元音音 /aʊ/ 开头，用 an。' },
+      { wrong: 'I play the football.', right: 'I play football.', reason: '球类运动前面不加冠词；但乐器前要加 the (play the piano)。' },
+      { wrong: 'She is teacher.', right: 'She is a teacher.', reason: '可数名词单数前必须有冠词或限定词。' },
+      { wrong: 'The Mary is my friend.', right: 'Mary is my friend.', reason: '专有名词（人名/地名）前不加冠词。' },
+    ],
+    usageNotes: [
+      { title: 'a vs an 的判断', body: '看后面词的"读音"而不是"字母"。元音音 (a/e/i/o/u, ɑ, ə) 开头用 an；辅音音用 a。'},
+      { title: '什么时候用 the', body: '① 双方都知道的特定事物 (Please close the door.) ② 第二次提到 (I saw a cat. The cat was black.) ③ 世界上独一无二 (the sun, the moon, the earth) ④ 最高级 (the best) ⑤ 乐器 (the piano)。' },
+      { title: '什么时候不用冠词', body: '球类运动 (play basketball)、三餐 (have lunch)、交通方式 (by bus)、抽象/不可数名词作泛指 (Life is short.)、专有名词 (China, Tom)。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: '___ honest person never lies.', options: ['A', 'An', 'The'], answer: 'An', explain: 'honest 中 h 不发音，元音开头用 an。' },
+      { type: 'choice', question: 'I play ___ guitar after ___ dinner.', options: ['the / the', 'the / —', '— / —'], answer: 'the / —', explain: '乐器前用 the；三餐前不加冠词。' },
+      { type: 'translate', question: '翻译：太阳从东方升起。', hint: 'sun / east', answer: 'The sun rises in the east', explain: '太阳和东方都是独一无二，用 the。' },
+      { type: 'correction', question: '找错：He is best student in the class.', answer: 'He is the best student in the class', explain: '最高级前必须加 the。' },
+      { type: 'translate', question: '翻译：我喜欢音乐。', hint: 'like / music', answer: 'I like music', explain: '抽象不可数名词泛指时不加冠词。' },
+    ],
+    relatedLessons: ['l03-plural', 'l15-prep'],
   },
   {
     id: 'l05-have',
@@ -187,6 +288,25 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'correction', question: 'My brother have two dogs. （找错）', answer: 'My brother has two dogs', explain: '"My brother" 是第三人称单数，用 has。' },
       { type: 'reorder', question: '排序：', options: ['long', 'hair', 'She', 'has'], answer: 'She has long hair', explain: '形容词修饰名词放前面。' },
     ],
+    mistakes: [
+      { wrong: 'She have a car.', right: 'She has a car.', reason: 'she 是第三人称单数，用 has。' },
+      { wrong: 'My friends has time.', right: 'My friends have time.', reason: 'friends 复数主语用 have。' },
+      { wrong: 'He don\'t have money.', right: 'He doesn\'t have money.', reason: 'he 否定句用 doesn\'t，动词回原形 have。' },
+      { wrong: 'Do she has a sister?', right: 'Does she have a sister?', reason: '助动词 Does 已表第三人称单数，主动词回原形 have。' },
+    ],
+    usageNotes: [
+      { title: 'have 的多种含义', body: '不只是"有"——还表示"吃/喝/做某事"：have breakfast (吃早餐), have a shower (洗澡), have fun (玩得开心)。' },
+      { title: 'have got = have', body: '英式英语常说 have got：I\'ve got a sister. = I have a sister. 意思一样，have got 更口语。' },
+      { title: '疑问/否定要换助动词', body: 'have 在一般现在时疑问/否定时不再自己变化，靠 do/does 帮忙：Does he have...? / He doesn\'t have...' },
+    ],
+    advancedExercises: [
+      { type: 'translate', question: '翻译：她每天吃早餐吗？', hint: 'have breakfast', answer: 'Does she have breakfast every day?', explain: 'have breakfast = 吃早餐；she 用 Does + have。' },
+      { type: 'correction', question: '找错：Tom and Jerry has lunch together.', answer: 'Tom and Jerry have lunch together', explain: '主语是两个人 → 复数 → have。' },
+      { type: 'choice', question: 'My parents ___ a big house.', options: ['has', 'have'], answer: 'have' },
+      { type: 'choice', question: '___ your mother have a job?', options: ['Do', 'Does', 'Is'], answer: 'Does' },
+      { type: 'translate', question: '翻译：我玩得很开心。', hint: 'have fun', answer: 'I have fun', explain: 'have fun = 玩得开心。' },
+    ],
+    relatedLessons: ['l01-be-verb', 'l11-aux-do'],
   },
   {
     id: 'l06-present-simple',
@@ -216,6 +336,25 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'correction', question: 'She go to school by bus. （找错）', answer: 'She goes to school by bus', explain: '第三人称单数 go → goes。' },
       { type: 'reorder', question: '排序：', options: ['English', 'every day', 'I', 'learn'], answer: 'I learn English every day', explain: '时间状语放句尾。' },
     ],
+    mistakes: [
+      { wrong: 'She studys English.', right: 'She studies English.', reason: '辅音 + y 结尾，把 y 改 i 加 es。' },
+      { wrong: 'He goes to school every days.', right: 'He goes to school every day.', reason: 'every + 单数名词，every day 不加 s。' },
+      { wrong: 'My dog like fish.', right: 'My dog likes fish.', reason: 'dog 是第三人称单数（it），用 likes。' },
+      { wrong: 'The earth go around the sun.', right: 'The earth goes around the sun.', reason: '客观事实也用一般现在时，主语 earth 用 goes。' },
+    ],
+    usageNotes: [
+      { title: '什么时候用一般现在时', body: '① 习惯性动作（every day, often, usually）② 客观事实/真理 (The sun rises in the east.) ③ 时间表（The train leaves at 8.）。' },
+      { title: '动词第三人称单数变化规则', body: '① 一般加 s：play→plays ② s/x/ch/sh/o 结尾加 es：watch→watches, go→goes ③ 辅音 + y → ies：study→studies ④ 不规则：have→has。' },
+      { title: '常见时间状语', body: 'every day/week/year, always, usually, often, sometimes, never, on Mondays, in the morning。' },
+    ],
+    advancedExercises: [
+      { type: 'fillblank', question: 'watch 的第三人称单数：___', answer: 'watches' },
+      { type: 'fillblank', question: 'fly 的第三人称单数：___', answer: 'flies' },
+      { type: 'translate', question: '翻译：水在 100 度沸腾。', hint: 'water / boil / 100 degrees', answer: 'Water boils at 100 degrees', explain: '客观真理用一般现在时；water 不可数主语视为单数。' },
+      { type: 'correction', question: '找错：She often watch TV at night.', answer: 'She often watches TV at night', explain: 'watch 以 ch 结尾，第三人称单数加 es。' },
+      { type: 'choice', question: 'The bus ___ at 7:30 every morning.', options: ['leave', 'leaves'], answer: 'leaves', explain: 'bus 是单数(it)，用 leaves。' },
+    ],
+    relatedLessons: ['l07-present-cont', 'l11-aux-do'],
   },
   {
     id: 'l07-present-cont',
@@ -245,6 +384,25 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'correction', question: 'They is playing football. （找错）', answer: 'They are playing football', explain: 'They 用 are。' },
       { type: 'reorder', question: '排序：', options: ['a', 'book', 'reading', 'am', 'I'], answer: 'I am reading a book', explain: 'I + am + V-ing + 宾语。' },
     ],
+    mistakes: [
+      { wrong: 'I reading a book.', right: 'I am reading a book.', reason: '现在进行时不能省略 be 动词。' },
+      { wrong: 'He is runing.', right: 'He is running.', reason: '短元音 + 单辅音结尾要双写：run → running。' },
+      { wrong: 'She is writeing.', right: 'She is writing.', reason: 'e 结尾去 e 加 ing：write → writing。' },
+      { wrong: 'I am liking this song.', right: 'I like this song.', reason: '感觉/认知类动词 (like, love, know, want, hear, see) 一般不用进行时。' },
+    ],
+    usageNotes: [
+      { title: '什么时候用进行时', body: '① 此刻正在发生 (Look! He\'s running.) ② 这段时间在进行 (I\'m reading "1984" these days.) ③ 表示按计划即将发生 (We\'re leaving tomorrow.)。' },
+      { title: '动词 + ing 的拼写', body: '① 直接加：read→reading ② e 结尾去 e：write→writing ③ 短元音 + 辅音双写：run→running, swim→swimming, sit→sitting ④ ie → y + ing：lie→lying。' },
+      { title: '不用进行时的动词', body: '感官/认知/情感类：like, love, hate, know, understand, believe, want, need, hear, see, smell。用一般现在时即可。' },
+    ],
+    advancedExercises: [
+      { type: 'fillblank', question: 'swim + ing = ___', answer: 'swimming' },
+      { type: 'fillblank', question: 'lie + ing = ___', answer: 'lying' },
+      { type: 'translate', question: '翻译：她现在在哭吗？', hint: 'crying / now', answer: 'Is she crying now?', explain: 'Be 动词提前作疑问 + V-ing。' },
+      { type: 'correction', question: '找错：I am knowing the answer.', answer: 'I know the answer', explain: 'know 不用进行时，直接用一般现在时。' },
+      { type: 'choice', question: 'We ___ a party next Saturday.', options: ['have', 'are having'], answer: 'are having', explain: '按计划即将发生用进行时表将来。' },
+    ],
+    relatedLessons: ['l06-present-simple', 'l08-past-simple'],
   },
   {
     id: 'l08-past-simple',
@@ -274,6 +432,27 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'correction', question: 'She goed home. （找错）', answer: 'She went home', explain: 'go 的过去式是 went，不是 goed。' },
       { type: 'reorder', question: '排序：', options: ['last', 'we', 'a movie', 'watched', 'night'], answer: 'we watched a movie last night', explain: '时间状语 last night 放末尾。' },
     ],
+    mistakes: [
+      { wrong: 'I goed home yesterday.', right: 'I went home yesterday.', reason: 'go 的过去式是不规则的 went。' },
+      { wrong: 'He didn\'t went home.', right: 'He didn\'t go home.', reason: 'didn\'t 后动词回原形。' },
+      { wrong: 'Did you saw the movie?', right: 'Did you see the movie?', reason: 'Did 已表过去，主动词回原形 see。' },
+      { wrong: 'I studyed English.', right: 'I studied English.', reason: '辅音 + y 结尾把 y 变 i 加 ed。' },
+      { wrong: 'He stoped the car.', right: 'He stopped the car.', reason: '短元音 + 辅音结尾要双写：stop → stopped。' },
+    ],
+    usageNotes: [
+      { title: '什么时候用过去时', body: '动作发生在明确的过去时间。常见时间标志：yesterday, last week/year, ago, in 2020, when I was young。' },
+      { title: '动词过去式变化规则', body: '① 一般加 ed：work→worked ② e 结尾加 d：live→lived ③ 辅音 + y → ied：study→studied ④ 短元音 + 辅音双写：stop→stopped ⑤ 不规则需单独记忆。' },
+      { title: '常见不规则过去式', body: 'go→went, see→saw, do→did, have→had, eat→ate, drink→drank, come→came, take→took, give→gave, get→got, buy→bought, think→thought, say→said, find→found。' },
+      { title: '疑问与否定', body: '助动词用 did：Did you...? / I didn\'t...，主动词一律回原形。' },
+    ],
+    advancedExercises: [
+      { type: 'fillblank', question: 'study 的过去式：___', answer: 'studied' },
+      { type: 'fillblank', question: 'plan 的过去式：___', answer: 'planned' },
+      { type: 'fillblank', question: 'think 的过去式：___', answer: 'thought' },
+      { type: 'translate', question: '翻译：他们昨天没去公园。', hint: 'go / park / yesterday', answer: 'They didn\'t go to the park yesterday', explain: 'didn\'t + 动词原形。' },
+      { type: 'correction', question: '找错：When did you saw him?', answer: 'When did you see him?', explain: 'Did 后主动词回原形 see。' },
+    ],
+    relatedLessons: ['l09-future', 'l10-present-perfect'],
   },
   {
     id: 'l09-future',
@@ -300,6 +479,25 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'It is going ___ rain.', options: ['to', 'for'], answer: 'to' },
       { type: 'fillblank', question: '"我会努力" I ___ try my best.', answer: 'will' },
     ],
+    mistakes: [
+      { wrong: 'I will to call you.', right: 'I will call you.', reason: 'will 后接动词原形，不要加 to。' },
+      { wrong: 'She wills come.', right: 'She will come.', reason: 'will 是情态动词，不随主语变化。' },
+      { wrong: 'I am going to going home.', right: 'I am going to go home.', reason: 'be going to + 动词原形。' },
+      { wrong: 'It will rains tomorrow.', right: 'It will rain tomorrow.', reason: 'will 后必须动词原形 rain。' },
+    ],
+    usageNotes: [
+      { title: 'will vs be going to', body: '① will：临时决定 / 预测 / 承诺 (I\'ll help you.) ② be going to：已计划好的 / 有迹象的 (Look at the clouds. It\'s going to rain.)。' },
+      { title: '常见时间标志', body: 'tomorrow, next week/month/year, in 2030, in the future, soon, later, this evening。' },
+      { title: '缩写形式', body: 'I will → I\'ll；She will → She\'ll；will not → won\'t。日常使用很常见。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: 'The phone is ringing. I ___ answer it.', options: ['will', 'am going to'], answer: 'will', explain: '临时决定用 will。' },
+      { type: 'choice', question: 'Look at those dark clouds. It ___ rain.', options: ['will', 'is going to'], answer: 'is going to', explain: '有明显迹象用 be going to。' },
+      { type: 'translate', question: '翻译：她明天不会来。', hint: 'won\'t / come', answer: 'She won\'t come tomorrow', explain: 'will not = won\'t。' },
+      { type: 'correction', question: '找错：I am going to studying English.', answer: 'I am going to study English', explain: 'be going to + 动词原形。' },
+      { type: 'reorder', question: '排序：', options: ['tomorrow', 'will', 'I', 'you', 'call'], answer: 'I will call you tomorrow' },
+    ],
+    relatedLessons: ['l08-past-simple', 'l21-when'],
   },
   {
     id: 'l10-present-perfect',
@@ -326,6 +524,27 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'fillblank', question: 'do 的过去分词：___', answer: 'done' },
       { type: 'choice', question: 'We have ___ here for 5 years.', options: ['live', 'lived'], answer: 'lived' },
     ],
+    mistakes: [
+      { wrong: 'I have went to Paris.', right: 'I have been to Paris.', reason: '完成时用过去分词 been/gone；表示"去过"用 been。' },
+      { wrong: 'She has finished her work yesterday.', right: 'She finished her work yesterday.', reason: '明确过去时间 (yesterday) 不能用现在完成时，改用一般过去时。' },
+      { wrong: 'He has lived here since 5 years.', right: 'He has lived here for 5 years.', reason: '"持续 5 年"用 for (一段时间)；"自从某时间点起"用 since。' },
+      { wrong: 'They have ate dinner.', right: 'They have eaten dinner.', reason: 'eat 的过去分词是 eaten。' },
+    ],
+    usageNotes: [
+      { title: '现在完成时表达什么', body: '① 过去发生但对现在有影响 (I\'ve lost my keys → 现在还没找到) ② 过去某时到现在持续 (She has lived here for 3 years) ③ 经验阅历 (I have been to Japan)。' },
+      { title: 'been vs gone', body: 'have been to = 去过 (已经回来)；have gone to = 去了 (还没回来)。He has been to Japan. (回来了) vs He has gone to Japan. (还在那)。' },
+      { title: 'for vs since', body: 'for + 一段时间 (for 3 years, for a week)；since + 时间点/起始点 (since 2020, since Monday, since I was a child)。' },
+      { title: '常见时间标志', body: 'already, yet, just, ever, never, since, for, so far, recently, up to now。' },
+    ],
+    advancedExercises: [
+      { type: 'fillblank', question: 'write 的过去分词：___', answer: 'written' },
+      { type: 'fillblank', question: 'be 的过去分词：___', answer: 'been' },
+      { type: 'choice', question: 'She has ___ a teacher for 10 years.', options: ['been', 'gone'], answer: 'been' },
+      { type: 'choice', question: 'I have known him ___ 2015.', options: ['for', 'since'], answer: 'since' },
+      { type: 'correction', question: '找错：He has saw that movie.', answer: 'He has seen that movie', explain: 'see 的过去分词是 seen。' },
+      { type: 'translate', question: '翻译：你吃过晚饭了吗？', hint: 'have / dinner', answer: 'Have you had dinner?', explain: 'have 作主动词，过去分词也是 had。' },
+    ],
+    relatedLessons: ['l08-past-simple', 'l09-future'],
   },
   {
     id: 'l11-aux-do',
@@ -352,6 +571,25 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: '___ you go yesterday?', options: ['Do', 'Did'], answer: 'Did' },
       { type: 'choice', question: 'Did you ___ it?', options: ['saw', 'see'], answer: 'see' },
     ],
+    mistakes: [
+      { wrong: 'Do she likes apples?', right: 'Does she like apples?', reason: 'she 用 Does + 动词原形 like。' },
+      { wrong: 'She don\'t like coffee.', right: 'She doesn\'t like coffee.', reason: '第三人称单数否定用 doesn\'t。' },
+      { wrong: 'Did you went there?', right: 'Did you go there?', reason: 'Did 后动词回原形 go。' },
+      { wrong: 'Do you can swim?', right: 'Can you swim?', reason: 'can 已经是助动词，不需要再加 do。' },
+    ],
+    usageNotes: [
+      { title: '助动词三大用途', body: '① 构成疑问句 (Do you...?) ② 构成否定句 (I don\'t...) ③ 加强语气 (I do love you.)。' },
+      { title: 'do/does/did 的选择', body: 'do：I/you/we/they 现在时；does：he/she/it 现在时；did：所有主语过去时。后面动词一律回原形。' },
+      { title: 'be 动词和情态动词不用 do', body: 'Is she...? 不是 Does she be...？；Can you swim? 不是 Do you can swim?。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: '___ your father work in Beijing?', options: ['Do', 'Does', 'Is'], answer: 'Does' },
+      { type: 'correction', question: '找错：I don\'t went to the party.', answer: 'I didn\'t go to the party', explain: '过去否定用 didn\'t + 动词原形。' },
+      { type: 'choice', question: 'I ___ love watching movies! (加强语气)', options: ['do', 'does'], answer: 'do', explain: '强调谓语用 do，I 用 do。' },
+      { type: 'translate', question: '翻译：他不在中国生活。', hint: 'live / China', answer: 'He doesn\'t live in China', explain: 'he 现在时否定用 doesn\'t。' },
+      { type: 'choice', question: '___ they finish the work on time?', options: ['Do', 'Does', 'Did'], answer: 'Did', explain: '"完成"的动作如果是过去发生，用 Did。' },
+    ],
+    relatedLessons: ['l06-present-simple', 'l08-past-simple', 'l18-negation'],
   },
   {
     id: 'l12-modals',
@@ -378,6 +616,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: '"我可以问个问题吗？" ___ I ask a question?', options: ['May', 'Must'], answer: 'May' },
       { type: 'choice', question: 'He may ___ at home.', options: ['be', 'is'], answer: 'be' },
     ],
+    mistakes: [
+      { wrong: 'She cans swim.', right: 'She can swim.', reason: '情态动词不随主语变化，永远是 can。' },
+      { wrong: 'I can to play piano.', right: 'I can play piano.', reason: 'can 后接动词原形，不加 to。' },
+      { wrong: 'You must to study.', right: 'You must study.', reason: 'must 后接动词原形，不加 to。' },
+      { wrong: 'Can you swimming?', right: 'Can you swim?', reason: '情态动词后必须是动词原形。' },
+    ],
+    usageNotes: [
+      { title: '情态动词的特点', body: '① 后接动词原形 (can do, must go)；② 不随主语变化 (he can, she can)；③ 自带"助动词"功能：疑问句直接提前 (Can you...?)，否定句直接加 not (can\'t)。' },
+      { title: '常见情态动词的含义', body: 'can = 能 / 会 / 可以 (能力或可能性) | could = 过去能力 / 礼貌请求 | may = 可以 / 也许 | must = 必须 / 一定是 | should = 应该 | would = 愿意 / 委婉请求。' },
+      { title: '推测的语气强弱', body: '从最确定到最不确定：must (一定) > should (应该) > may/might (可能) > could (也许)。He must be tired.（他一定累了）vs He might be tired.（他可能累了）' },
+      { title: 'can\'t vs mustn\'t', body: 'can\'t = 不能/不会 (不可能)；mustn\'t = 不许/不能 (禁止)。You can\'t lift it. vs You mustn\'t smoke here.' },
+    ],
+    advancedExercises: [
+      { type: 'translate', question: '翻译：你能帮我吗？', hint: 'help me', answer: 'Can you help me?', explain: '情态动词直接提前作疑问。' },
+      { type: 'correction', question: '找错：He musts go now.', answer: 'He must go now', explain: 'must 不变形。' },
+      { type: 'choice', question: 'It ___ rain tonight, but I\'m not sure.', options: ['must', 'might'], answer: 'might', explain: '不确定推测用 might。' },
+      { type: 'choice', question: 'Children ___ play with fire.', options: ['mustn\'t', 'can\'t'], answer: 'mustn\'t', explain: '"不许/禁止"用 mustn\'t。' },
+      { type: 'translate', question: '翻译：你应该多喝水。', hint: 'should / more water', answer: 'You should drink more water', explain: '建议用 should。' },
+    ],
+    relatedLessons: ['l17-questions', 'l18-negation'],
   },
   {
     id: 'l13-adj-adv',
@@ -404,6 +662,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'She is a ___ girl.', options: ['kind', 'kindly'], answer: 'kind' },
       { type: 'choice', question: 'He runs very ___.', options: ['fast', 'fastly'], answer: 'fast' },
     ],
+    mistakes: [
+      { wrong: 'He sings beautiful.', right: 'He sings beautifully.', reason: '修饰动词 sing 用副词 beautifully。' },
+      { wrong: 'She is a happily girl.', right: 'She is a happy girl.', reason: '修饰名词 girl 用形容词 happy。' },
+      { wrong: 'He drives very fastly.', right: 'He drives very fast.', reason: 'fast 形副同形，不加 ly。' },
+      { wrong: 'She runs very hardly.', right: 'She runs very hard.', reason: 'hardly 意为"几乎不"，不是 hard 的副词。' },
+    ],
+    usageNotes: [
+      { title: '形副转换规则', body: '① 一般 + ly：quick→quickly ② y 结尾 → ily：happy→happily ③ le 结尾去 e + y：simple→simply ④ ic 结尾 + ally：basic→basically。' },
+      { title: '形副同形的词', body: 'fast / hard / early / late / high / low / near / far —— 这些词的形容词和副词长度一样，加 ly 反而是另一个意思。' },
+      { title: '副词位置', body: '① 修饰动词常放动词后：He runs fast. ② 修饰形容词放前面：very beautiful。③ 频度副词 (always, often, usually) 放在 be 后 / 实义动词前 / 助动词后。' },
+      { title: 'good vs well', body: 'good 是形容词 (He is a good singer)；well 是副词 (He sings well)。但 well 也可以作形容词表示"健康"：I\'m well。' },
+    ],
+    advancedExercises: [
+      { type: 'fillblank', question: 'careful → ___（副词）', answer: 'carefully' },
+      { type: 'fillblank', question: 'easy → ___', answer: 'easily' },
+      { type: 'correction', question: '找错：She is a beautifully woman.', answer: 'She is a beautiful woman', explain: '修饰名词 woman 用形容词。' },
+      { type: 'choice', question: 'He plays the violin very ___.', options: ['good', 'well'], answer: 'well', explain: '修饰动词 play 用副词 well。' },
+      { type: 'translate', question: '翻译：她总是早起。', hint: 'always / early', answer: 'She always gets up early', explain: 'always 放在实义动词 gets 前；early 形副同形作副词。' },
+    ],
+    relatedLessons: ['l14-comparative', 'l06-present-simple'],
   },
   {
     id: 'l14-comparative',
@@ -430,6 +708,28 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'She is the ___ girl.', options: ['most beautiful', 'beautifullest'], answer: 'most beautiful' },
       { type: 'choice', question: 'My English is ___ than before.', options: ['gooder', 'better'], answer: 'better' },
     ],
+    mistakes: [
+      { wrong: 'She is more taller than me.', right: 'She is taller than me.', reason: '短词加 er 即可，不能再加 more。' },
+      { wrong: 'He is the most tallest.', right: 'He is the tallest.', reason: '同理：tallest 已是最高级，不再加 most。' },
+      { wrong: 'It is more cheap.', right: 'It is cheaper.', reason: 'cheap 是短词，加 er：cheaper。' },
+      { wrong: 'She is taller than I.', right: 'She is taller than me.', reason: '比较级后用宾格 me（口语更自然）。' },
+      { wrong: 'He is more better.', right: 'He is better.', reason: 'better 已含比较级意义，不加 more。' },
+    ],
+    usageNotes: [
+      { title: '短词 vs 长词', body: '① 单音节直接 + er/est：tall→taller→tallest ② 双音节以 y 结尾去 y + ier/iest：happy→happier→happiest ③ 其他双音节及以上用 more/most：beautiful→more beautiful→most beautiful。' },
+      { title: '不规则', body: 'good/well → better → best；bad/badly → worse → worst；many/much → more → most；little → less → least；far → farther/further → farthest/furthest。' },
+      { title: '比较级配套词', body: 'than (比……)；as ... as (像……一样)；not as ... as (不像……那样)；the + 比较级, the + 比较级 (越……越……：The more, the better.)。' },
+      { title: '最高级常加 the', body: 'the tallest, the most interesting。最高级后接 in + 范围 (in the class) 或 of + 群体 (of all)。' },
+    ],
+    advancedExercises: [
+      { type: 'fillblank', question: 'busy 的比较级：___', answer: 'busier' },
+      { type: 'fillblank', question: 'bad 的最高级：___', answer: 'worst' },
+      { type: 'correction', question: '找错：This problem is more easier than that one.', answer: 'This problem is easier than that one', explain: 'easier 已是比较级。' },
+      { type: 'translate', question: '翻译：他和我一样高。', hint: 'as tall as', answer: 'He is as tall as me', explain: 'as + 原级 + as。' },
+      { type: 'translate', question: '翻译：你学得越多，知道得越多。', hint: 'the more / the more', answer: 'The more you learn, the more you know', explain: 'The + 比较级, the + 比较级 句型。' },
+      { type: 'choice', question: 'This is ___ book I have ever read.', options: ['interesting', 'more interesting', 'the most interesting'], answer: 'the most interesting' },
+    ],
+    relatedLessons: ['l13-adj-adv', 'l24-relative'],
   },
   {
     id: 'l15-prep',
@@ -456,6 +756,28 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'The cat is ___ the box.', options: ['in', 'on', 'at'], answer: 'in' },
       { type: 'choice', question: 'He lives ___ Beijing.', options: ['in', 'on', 'at'], answer: 'in' },
     ],
+    mistakes: [
+      { wrong: 'I get up in 7 o\'clock.', right: 'I get up at 7 o\'clock.', reason: '具体时刻用 at。' },
+      { wrong: 'See you in Monday.', right: 'See you on Monday.', reason: '具体星期/日期用 on。' },
+      { wrong: 'I was born on 2000.', right: 'I was born in 2000.', reason: '年份用 in。' },
+      { wrong: 'He lives at China.', right: 'He lives in China.', reason: '大地方（国家/城市）用 in；at 用于小地点。' },
+      { wrong: 'I will see you in the morning of Monday.', right: 'I will see you on Monday morning.', reason: '某天的早上整体用 on：on Monday morning。' },
+    ],
+    usageNotes: [
+      { title: '时间介词三档', body: 'in（大范围）：in 2024, in May, in summer, in the morning。on（具体日期/星期）：on Monday, on May 5th, on Christmas Day。at（具体时刻/特定时间点）：at 7 o\'clock, at noon, at night, at weekends。' },
+      { title: '地点介词三档', body: 'in（内部/范围内）：in the box, in China, in the room。on（表面/线上）：on the table, on the wall, on the second floor。at（一个点/具体地点）：at the door, at school, at home, at the bus stop。' },
+      { title: '常见固定搭配', body: 'in the morning/afternoon/evening, at night, at noon, at the moment, on time (准时), in time (及时), on weekdays, at weekends (英式) / on weekends (美式)。' },
+      { title: '其他常用介词', body: 'under (下)，over (上方)，above (上面)，below (下面)，between (两者之间)，among (多者之间)，next to / beside (旁边)，behind (后面)，in front of (前面)。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: 'The meeting is ___ Friday afternoon.', options: ['in', 'on', 'at'], answer: 'on' },
+      { type: 'choice', question: 'She arrived ___ Tokyo last night.', options: ['in', 'on', 'at'], answer: 'in' },
+      { type: 'choice', question: 'I\'ll wait for you ___ the bus stop.', options: ['in', 'on', 'at'], answer: 'at' },
+      { type: 'translate', question: '翻译：我中午 12 点和朋友吃午饭。', hint: 'at / lunch / with friends', answer: 'I have lunch with friends at 12 noon', explain: '具体时刻用 at。' },
+      { type: 'correction', question: '找错：The picture is in the wall.', answer: 'The picture is on the wall', explain: '挂在墙上用 on (表面)。' },
+      { type: 'fillblank', question: '"准时"的英文：___ time', answer: 'on' },
+    ],
+    relatedLessons: ['l16-there-be', 'l04-articles'],
   },
   {
     id: 'l16-there-be',
@@ -482,6 +804,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'There ___ five apples and a pear.', options: ['is', 'are'], answer: 'are' },
       { type: 'choice', question: 'There ___ a pen and three pencils.', options: ['is', 'are'], answer: 'is' },
     ],
+    mistakes: [
+      { wrong: 'There has a book on the desk.', right: 'There is a book on the desk.', reason: '中文"有"译成英文不是 have，而是 there be。' },
+      { wrong: 'There are some water.', right: 'There is some water.', reason: 'water 不可数用 is。' },
+      { wrong: 'There is two books.', right: 'There are two books.', reason: '复数主语用 are。' },
+      { wrong: 'There are a book and three pens.', right: 'There is a book and three pens.', reason: '"就近原则"：be 跟最近的名词 (a book 单数) 保持一致。' },
+    ],
+    usageNotes: [
+      { title: 'there be vs have', body: '中文都说"有"，英文要区分：① 某地有某物 → there be (There is a cat in the room.) ② 某人拥有某物 → have (I have a cat.)。' },
+      { title: '就近原则', body: '主语是多个并列名词时，be 跟最近的那个：There is a book and two pens. (近 a book → is)；There are two pens and a book. (近 two pens → are)。' },
+      { title: '疑问与否定', body: '疑问：Is/Are there...? 回答 Yes, there is/are. / No, there isn\'t/aren\'t.；否定：There isn\'t/aren\'t...。' },
+      { title: '过去时与将来时', body: 'There was/were... (过去有)；There will be... (将会有)。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: 'There ___ many people in the park yesterday.', options: ['was', 'were'], answer: 'were', explain: 'people 复数 + 过去时。' },
+      { type: 'translate', question: '翻译：我的书包里有一本书和两支笔。', hint: 'there is / book / pens', answer: 'There is a book and two pens in my bag', explain: '就近原则，be 跟 a book。' },
+      { type: 'correction', question: '找错：There have a problem with the computer.', answer: 'There is a problem with the computer', explain: '"有"用 there is，不是 have。' },
+      { type: 'translate', question: '翻译：明天有考试吗？', hint: 'be a test / tomorrow', answer: 'Will there be a test tomorrow?', explain: '将来时疑问：Will there be...?' },
+      { type: 'choice', question: '___ any milk in the fridge?', options: ['Is there', 'Are there', 'Has there'], answer: 'Is there' },
+    ],
+    relatedLessons: ['l05-have', 'l15-prep'],
   },
   {
     id: 'l17-questions',
@@ -508,6 +850,27 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: '"你住哪？" ___ do you live?', options: ['What', 'Where'], answer: 'Where' },
       { type: 'choice', question: '___ are you?（多大）', options: ['How', 'How old'], answer: 'How old' },
     ],
+    mistakes: [
+      { wrong: 'You are a student?', right: 'Are you a student?', reason: '一般疑问句要把 be 动词提到主语前。' },
+      { wrong: 'Where you live?', right: 'Where do you live?', reason: '特殊疑问句中没有 be / 情态时要加助动词 do/does/did。' },
+      { wrong: 'What does she likes?', right: 'What does she like?', reason: 'Does 已表第三人称单数，主动词回原形 like。' },
+      { wrong: 'Where is going he?', right: 'Where is he going?', reason: '主语在 be 之后；现在进行时疑问句词序：wh + be + 主语 + V-ing。' },
+      { wrong: 'How much books do you have?', right: 'How many books do you have?', reason: 'how many + 可数复数；how much + 不可数。' },
+    ],
+    usageNotes: [
+      { title: '两大类疑问句', body: '① 一般疑问句（Yes/No 回答）：把 be / 助动词 / 情态动词提到主语前。② 特殊疑问句（用 wh 引导）：wh-词 + 一般疑问结构。' },
+      { title: 'wh 疑问词速查', body: 'what (什么) / who (谁) / whose (谁的) / which (哪一个) / where (哪里) / when (什么时候) / why (为什么) / how (怎么) / how old (多大) / how many/much (多少) / how long (多久) / how often (多久一次)。' },
+      { title: '主语提问 ≠ 一般疑问', body: '当 wh 词本身作主语时不需要助动词倒装：Who broke the window? (谁打破了窗户，who 是主语)；不是 Who did break...?。' },
+      { title: '反义疑问句', body: '陈述句 + 简短的反向疑问：You like coffee, don\'t you? / She is here, isn\'t she?。前肯后否，前否后肯。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: '___ broke the window? (谁打破的)', options: ['Who', 'Who did'], answer: 'Who', explain: 'Who 作主语时不需 did。' },
+      { type: 'choice', question: 'How ___ apples do you want?', options: ['much', 'many'], answer: 'many' },
+      { type: 'translate', question: '翻译：你的英语课什么时候上？', hint: 'when / English class', answer: 'When is your English class?', explain: 'when + be + 主语。' },
+      { type: 'correction', question: '找错：Why she is crying?', answer: 'Why is she crying?', explain: 'be 动词要倒装到 she 前。' },
+      { type: 'translate', question: '翻译：你喜欢咖啡，对吗？', hint: '反义疑问', answer: 'You like coffee, don\'t you?', explain: '前肯定 → 后否定 don\'t you。' },
+    ],
+    relatedLessons: ['l11-aux-do', 'l18-negation'],
   },
   {
     id: 'l18-negation',
@@ -534,6 +897,27 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'I ___ speak French.', options: ["can't", "isn't"], answer: "can't" },
       { type: 'choice', question: 'It ___ a cat. It is a dog.', options: ["isn't", "doesn't"], answer: "isn't" },
     ],
+    mistakes: [
+      { wrong: 'I no like coffee.', right: "I don't like coffee.", reason: '中文"不"不能直接译为 no；要用 don\'t/doesn\'t + 动词原形。' },
+      { wrong: "She doesn't likes apples.", right: "She doesn't like apples.", reason: "doesn't 后动词回原形。" },
+      { wrong: "He don't have time.", right: "He doesn't have time.", reason: '第三人称单数否定用 doesn\'t。' },
+      { wrong: "I don't have no money.", right: "I don't have any money.", reason: '英语忌"双重否定"；否定句用 any 替代 some/no。' },
+      { wrong: "He didn't went home.", right: "He didn't go home.", reason: 'didn\'t 后动词回原形。' },
+    ],
+    usageNotes: [
+      { title: '否定三大场景', body: '① be 动词后 + not：I am not... / She isn\'t... ② 实义动词前 + don\'t/doesn\'t/didn\'t：He doesn\'t work. ③ 情态动词后 + not：can\'t, won\'t, mustn\'t, shouldn\'t。' },
+      { title: '常见否定缩写', body: "isn't, aren't, wasn't, weren't, don't, doesn't, didn't, won't (=will not), can't (=cannot), shouldn't, wouldn't, mustn't, hasn't, haven't, hadn't。" },
+      { title: 'some / any 的转换', body: '肯定句用 some：I have some money. 否定句和疑问句用 any：I don\'t have any money. / Do you have any money?。' },
+      { title: '部分否定与全部否定', body: 'all not (并非全部都) ≠ none/no (全部都不)。Not all students are lazy.（不是所有学生都懒）vs No students are lazy.（没有学生懒）。' },
+    ],
+    advancedExercises: [
+      { type: 'correction', question: '找错：She don\'t want anything.', answer: "She doesn't want anything", explain: 'she 用 doesn\'t。' },
+      { type: 'correction', question: '找错：I don\'t have no friends here.', answer: "I don't have any friends here", explain: '英语忌双重否定。' },
+      { type: 'translate', question: '翻译：他过去不抽烟。', hint: 'used to / smoke', answer: "He didn't use to smoke", explain: "used to 的否定：didn't use to (注意不是 used to)。" },
+      { type: 'choice', question: 'I have ___ idea what to do.', options: ['any', 'no', 'some'], answer: 'no', explain: 'have no idea = 完全不知道，固定搭配。' },
+      { type: 'translate', question: '翻译：他们不可能撒谎。', hint: 'can\'t / lie', answer: "They can't be lying", explain: "can't be doing 表示对当下情况的否定推断。" },
+    ],
+    relatedLessons: ['l11-aux-do', 'l12-modals'],
   },
   {
     id: 'l19-imperative',
@@ -560,6 +944,27 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: '"请坐" ___ down, please.', options: ['Sit', 'Sitting'], answer: 'Sit' },
       { type: 'choice', question: '"小心点" Be ___.', options: ['care', 'careful'], answer: 'careful' },
     ],
+    mistakes: [
+      { wrong: 'You sit down.', right: 'Sit down.', reason: '祈使句不要主语，直接动词原形开头。' },
+      { wrong: 'Not run!', right: "Don't run!", reason: "否定祈使用 Don't + 动词原形。" },
+      { wrong: 'Be quiet!（"安静"省略 Be）', right: 'Be quiet!', reason: '形容词前必须有 Be (Be careful, Be patient)。' },
+      { wrong: "Let's to go.", right: "Let's go.", reason: "Let's 后接动词原形，不要加 to。" },
+      { wrong: 'Open door.', right: 'Open the door.', reason: '可数名词单数前要有冠词或限定词。' },
+    ],
+    usageNotes: [
+      { title: '祈使句的语气', body: '直接发出指令（命令/请求/建议）。加 please 更礼貌：Please sit down. / Sit down, please.' },
+      { title: '常见结构', body: '① 肯定：动词原形 + ...：Open the door. ② 否定：Don\'t + 动词原形：Don\'t worry. ③ Be + 形容词：Be careful. ④ Let\'s + 动词原形：Let\'s go.（包含说话人自己）⑤ Let me/him/her + 动词原形：Let me try.' },
+      { title: '反义疑问的特殊形式', body: '陈述句的反义疑问形式：Sit down, will you? / Don\'t be late, will you?。Let\'s 用 shall we：Let\'s go, shall we?。' },
+      { title: '强调与缓和', body: '强调用 Do：Do come in!（请进！）；缓和用 Could you... / Would you... 替代直接祈使：Could you open the door?' },
+    ],
+    advancedExercises: [
+      { type: 'correction', question: '找错：You please close the window.', answer: 'Please close the window', explain: '祈使句不要主语。' },
+      { type: 'translate', question: '翻译：我们一起努力吧。', hint: "Let's / try hard", answer: "Let's try hard together", explain: "Let's + 动词原形。" },
+      { type: 'choice', question: '___ touch! It\'s hot.', options: ['Not', "Don't", 'No'], answer: "Don't" },
+      { type: 'translate', question: '翻译：请准时到。', hint: 'be / on time', answer: 'Please be on time', explain: '形容词前用 be。' },
+      { type: 'choice', question: 'Sit down, ___?', options: ['will you', "won't you", "don't you"], answer: 'will you', explain: '肯定祈使句反问用 will you。' },
+    ],
+    relatedLessons: ['l12-modals', 'l18-negation'],
   },
   {
     id: 'l20-conjunctions',
@@ -586,6 +991,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'Small ___ powerful.', options: ['or', 'but'], answer: 'but' },
       { type: 'choice', question: 'Cats ___ dogs are pets.', options: ['and', 'but'], answer: 'and' },
     ],
+    mistakes: [
+      { wrong: 'I like apples, banana.', right: 'I like apples and bananas.', reason: '英文列举多项时最后一项前要 and。' },
+      { wrong: 'Although she is tired, but she keeps working.', right: 'Although she is tired, she keeps working. / She is tired, but she keeps working.', reason: '中文"虽然……但是"两词都说，英文 although 和 but 二选一。' },
+      { wrong: 'I don\'t have apples and bananas.', right: "I don't have apples or bananas.", reason: '否定句中表"也不"用 or。' },
+      { wrong: 'He is rich but he is unhappy. (语义重复)', right: 'He is rich but unhappy.', reason: '并列结构可省略重复部分。' },
+    ],
+    usageNotes: [
+      { title: '三大并列连词', body: 'and (并且/和)：连接同类、并列的内容。but (但是)：表示转折、对比。or (或者)：表示选择，否定句中表"也不"。' },
+      { title: '其他常用连词', body: 'so (所以)：表示结果 (It was raining, so we stayed home.)；for (因为)：书面表原因。yet (然而)：与 but 类似，更书面。nor (也不)：前否定后倒装 (I don\'t like coffee, nor does he)。' },
+      { title: '连词配对使用', body: 'both...and (两者都)；either...or (要么……要么)；neither...nor (既不……也不)；not only...but also (不但……而且)。Both Tom and Jerry are cute. / Neither he nor I am happy. (就近原则)。' },
+      { title: '逗号规则', body: '连接两个完整句子时 and/but/or 前要加逗号：I came, and she left.。短并列短语可以不加：apples and bananas。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: 'I want neither tea ___ coffee.', options: ['or', 'nor', 'and'], answer: 'nor', explain: 'neither 配 nor。' },
+      { type: 'choice', question: 'I don\'t like rain ___ snow.', options: ['and', 'or'], answer: 'or', explain: '否定句中表"也不"用 or。' },
+      { type: 'translate', question: '翻译：他既会唱歌也会跳舞。', hint: 'both...and / sing / dance', answer: 'He can both sing and dance', explain: 'both A and B 句型。' },
+      { type: 'correction', question: '找错：Although he was tired, but he kept working.', answer: 'Although he was tired, he kept working', explain: 'although 和 but 不能同句出现。' },
+      { type: 'choice', question: 'Either you ___ I am wrong.', options: ['or', 'and', 'nor'], answer: 'or', explain: 'either A or B = 要么 A 要么 B。' },
+    ],
+    relatedLessons: ['l21-when', 'l23-if'],
   },
   {
     id: 'l21-when',
@@ -612,6 +1037,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'Wash hands ___ eating.', options: ['before', 'after'], answer: 'before' },
       { type: 'choice', question: '"主将从现" 是说：从句用？', options: ['将来时', '现在时'], answer: '现在时' },
     ],
+    mistakes: [
+      { wrong: 'When he will come, I will tell you.', right: 'When he comes, I will tell you.', reason: '"主将从现"：主句将来时，从句用现在时。' },
+      { wrong: 'I will call you as soon as I will arrive.', right: 'I will call you as soon as I arrive.', reason: '同样主将从现。' },
+      { wrong: 'Before I going to bed, I read books.', right: 'Before I go to bed, I read books.', reason: '从句要完整动词形式，不是 V-ing。' },
+      { wrong: 'While I am cooking, the phone rang.', right: 'While I was cooking, the phone rang.', reason: '过去发生的事用过去时；while + 过去进行 + 过去 表示"正在……时突然……"。' },
+    ],
+    usageNotes: [
+      { title: '"主将从现"规则', body: '当主句是将来时（will / be going to）时，时间状语从句要用一般现在时表示将来。这条规则只在时间和条件状语从句中适用。' },
+      { title: '常见时间连词', body: 'when (当……时)，before (在……前)，after (在……后)，while (在……期间，常配进行时)，as soon as (一……就)，until/till (直到)，since (自从)，by the time (到……时)。' },
+      { title: 'while vs when', body: 'while + 进行时（强调持续）：While I was reading, he came in.；when 可接持续或瞬时动作：When he came, I was reading.' },
+      { title: '从句位置', body: '时间从句可放主句前或后。放前时通常用逗号分隔：When he arrives, call me. / Call me when he arrives.' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: 'I will go home as soon as the meeting ___.', options: ['ends', 'will end'], answer: 'ends', explain: '主将从现。' },
+      { type: 'choice', question: 'While I ___ dinner, he came in.', options: ['cooked', 'was cooking'], answer: 'was cooking', explain: 'while + 过去进行。' },
+      { type: 'translate', question: '翻译：我下班后会去找你。', hint: 'after / get off work', answer: "I will come to see you after I get off work", explain: '主将从现。' },
+      { type: 'correction', question: '找错：Don\'t leave until he will come back.', answer: "Don't leave until he comes back", explain: 'until 后从句用现在时。' },
+      { type: 'reorder', question: '排序：', options: ['it', 'When', 'home', 'I', 'rains', 'stay'], answer: 'When it rains I stay home' },
+    ],
+    relatedLessons: ['l23-if', 'l09-future'],
   },
   {
     id: 'l22-object-clause',
@@ -638,6 +1083,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: '宾语从句要用什么语序？', options: ['倒装', '陈述'], answer: '陈述' },
       { type: 'choice', question: 'He asked ___ I was OK.', options: ['that', 'if'], answer: 'if' },
     ],
+    mistakes: [
+      { wrong: "I don't know where is he.", right: "I don't know where he is.", reason: '宾语从句用陈述语序：主语在 be 之前。' },
+      { wrong: 'He said he is happy. (主句过去时)', right: 'He said he was happy.', reason: '主句过去时，从句相应过去：is → was。' },
+      { wrong: "She asked that I was OK.", right: "She asked if I was OK.", reason: '原句是一般疑问，引导词用 if/whether。' },
+      { wrong: "I think he doesn't like me.", right: "I don't think he likes me.", reason: '英语习惯把否定提到 think/believe/suppose 等主句。' },
+    ],
+    usageNotes: [
+      { title: '三种引导词', body: '① 陈述句 → that（可省）：I think (that) he is right.；② 一般疑问 → if / whether：I wonder if she will come.；③ 特殊疑问 → 原疑问词 (what/where/who/how...)：Tell me what you want.' },
+      { title: '陈述语序', body: '宾语从句永远用陈述语序，不要再倒装。错：I don\'t know where is he. 对：I don\'t know where he is.' },
+      { title: '时态一致', body: '主句过去时 → 从句相应往前推一级时态：is → was, has → had, will → would, can → could。但客观真理仍用现在时：He told me that the earth goes around the sun.' },
+      { title: '否定前移', body: 'think / believe / suppose / expect 等主语 + 否定的从句，习惯把 not 提到主句：I don\'t think he is right. (≠ I think he is not right.)。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: 'I wonder ___ it will rain tomorrow.', options: ['that', 'if', 'what'], answer: 'if', explain: '不确定是否的疑问用 if。' },
+      { type: 'correction', question: '找错：He told me where does she live.', answer: 'He told me where she lives', explain: '宾语从句陈述语序：where + 主语 + 动词。' },
+      { type: 'correction', question: '找错：She said she is a teacher. (主句过去时)', answer: 'She said she was a teacher', explain: '主句过去 → 从句过去。' },
+      { type: 'translate', question: '翻译：我不认为他会来。', hint: 'think / come', answer: "I don't think he will come", explain: '否定前移。' },
+      { type: 'translate', question: '翻译：他告诉我地球是圆的。', hint: 'told me / earth / round', answer: 'He told me that the earth is round', explain: '客观真理从句仍用现在时。' },
+    ],
+    relatedLessons: ['l17-questions', 'l24-relative'],
   },
   {
     id: 'l23-if',
@@ -664,6 +1129,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'If she ___ free, she will help.', options: ['is', 'will be'], answer: 'is' },
       { type: 'choice', question: 'If you don\'t hurry, you ___ late.', options: ['will be', 'are'], answer: 'will be' },
     ],
+    mistakes: [
+      { wrong: 'If it will rain, I will stay home.', right: 'If it rains, I will stay home.', reason: '"主将从现"：if 从句用一般现在时表将来。' },
+      { wrong: 'If I will be rich, I would travel.', right: 'If I were rich, I would travel.', reason: '虚拟语气（与现在事实相反）：if + 过去时, would + 动词原形。' },
+      { wrong: 'If I was you, I would go.', right: 'If I were you, I would go.', reason: '虚拟语气中 be 一律用 were，不分主语。' },
+      { wrong: 'Unless you don\'t hurry, you will be late.', right: 'Unless you hurry, you will be late.', reason: 'unless = if not，本身已含否定，从句不再否定。' },
+    ],
+    usageNotes: [
+      { title: '条件句三档', body: '① 真实条件 (zero/first conditional)：if + 现在时，主句 will/现在时：If it rains, I stay home. ② 虚拟现在 (second conditional)：if + 过去时，would + 动词原形：If I had money, I would travel. ③ 虚拟过去 (third conditional)：if + 过去完成时，would have + 过去分词：If I had known, I would have called.' },
+      { title: 'unless = if not', body: 'Unless you study, you will fail. = If you don\'t study, you will fail.。unless 本身已是"如果不"，不要再加 not。' },
+      { title: 'be 在虚拟语气中用 were', body: 'If I were you... / If she were here... (语法正式)。口语中 was 也常见但不正式。' },
+      { title: '其他条件连词', body: 'as long as (只要)、in case (以防)、provided that / providing that (假如)、suppose / supposing (假设)、on condition that (只要)。' },
+    ],
+    advancedExercises: [
+      { type: 'translate', question: '翻译：如果我是你，我会道歉。', hint: 'were / apologize', answer: "If I were you, I would apologize", explain: '虚拟语气 + were。' },
+      { type: 'translate', question: '翻译：除非你帮我，否则我会失败。', hint: 'unless / help / fail', answer: "Unless you help me, I will fail", explain: 'unless = if not。' },
+      { type: 'choice', question: 'If I ___ enough money, I would buy a house.', options: ['have', 'had'], answer: 'had', explain: '虚拟现在用过去时。' },
+      { type: 'correction', question: '找错：If she will come, please call me.', answer: 'If she comes, please call me', explain: '主将从现，if 从句用现在时。' },
+      { type: 'choice', question: '___ you don\'t mind, can I borrow your pen?', options: ['Unless', 'If'], answer: 'If', explain: '语义需要"如果你不介意"，用 if。' },
+    ],
+    relatedLessons: ['l21-when', 'l22-object-clause'],
   },
   {
     id: 'l24-relative',
@@ -690,6 +1175,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: '指人用？', options: ['who', 'which'], answer: 'who' },
       { type: 'choice', question: 'The man ___ helped me is kind.', options: ['who', 'which'], answer: 'who' },
     ],
+    mistakes: [
+      { wrong: 'The book which I bought it is good.', right: 'The book which I bought is good.', reason: '关系代词已经代替了宾语，不能再加 it。' },
+      { wrong: 'I have a friend, who he lives in Paris.', right: 'I have a friend who lives in Paris.', reason: '关系代词 who 已作主语，不再加 he。' },
+      { wrong: 'This is the place where I was born in.', right: 'This is the place where I was born. / This is the place in which I was born.', reason: 'where 已含 in，不要重复。' },
+      { wrong: 'I like the man which is funny.', right: 'I like the man who/that is funny.', reason: '指人用 who/that，不用 which。' },
+    ],
+    usageNotes: [
+      { title: '关系代词三大类', body: '① 指人：who (主语) / whom (宾语，正式) / that ② 指物：which / that ③ 表所属：whose（人物均可）。' },
+      { title: '关系副词', body: 'where (= in/at which，指地点)：The city where I live...；when (= in/on which，指时间)：The day when we met...；why (= for which，指原因)：The reason why he left...。' },
+      { title: '限制性 vs 非限制性', body: '限制性（无逗号）：必要信息，删去意思不完整。The man who lives next door is a doctor.；非限制性（有逗号）：附加信息。My father, who is 60, still works. (我父亲——附带说他 60 岁——仍在工作)。非限制性不用 that。' },
+      { title: '关系代词可省略时机', body: '当关系代词作宾语且是限制性从句时，可省略：The book (which) I bought is good.（可省 which）；作主语时不可省。' },
+    ],
+    advancedExercises: [
+      { type: 'choice', question: 'The girl ___ mother is a teacher is my friend.', options: ['who', 'whose', 'which'], answer: 'whose', explain: '表所属用 whose。' },
+      { type: 'translate', question: '翻译：这就是我出生的地方。', hint: 'place / be born', answer: 'This is the place where I was born', explain: '指地点用 where。' },
+      { type: 'correction', question: '找错：The car, that is red, is mine.', answer: 'The car, which is red, is mine', explain: '非限制性从句不能用 that。' },
+      { type: 'choice', question: 'The man ___ I met yesterday is a doctor.', options: ['who', 'whom', 'which'], answer: 'whom', explain: 'whom 作宾语（正式），口语用 who 或省略也可。' },
+      { type: 'translate', question: '翻译：我永远不会忘记我第一次见到她的那天。', hint: 'day / first / meet', answer: 'I will never forget the day when I first met her', explain: '指时间用 when。' },
+    ],
+    relatedLessons: ['l17-questions', 'l22-object-clause'],
   },
   {
     id: 'l25-review',
@@ -716,5 +1221,26 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
       { type: 'choice', question: 'If it rains, I ___ stay.', options: ['will', 'do'], answer: 'will' },
       { type: 'choice', question: 'The book ___ I read is great.', options: ['that', 'who'], answer: 'that' },
     ],
+    mistakes: [
+      { wrong: 'I am study English every day.', right: 'I study English every day. / I am studying English now.', reason: '一般现在时和现在进行时不能混用：be + 动词原形是错的。' },
+      { wrong: "Yesterday I have gone to the park.", right: "Yesterday I went to the park.", reason: '明确过去时间用一般过去时，不用现在完成时。' },
+      { wrong: "He is taller than me are.", right: "He is taller than I am. / He is taller than me.", reason: 'than 后用宾格或主格 + 助动词。' },
+      { wrong: "The book what I bought is good.", right: "The book that I bought is good.", reason: '关系代词用 that / which 不用 what。' },
+    ],
+    usageNotes: [
+      { title: '英语句子的基本骨架', body: '主语 + 谓语 + (宾语 / 表语 / 状语)。主语决定动词形式；时态决定时间；从句和修饰语丰富细节。' },
+      { title: '五大基本时态总览', body: '① 一般现在：习惯/事实 ② 现在进行：正在 ③ 一般过去：过去发生 ④ 一般将来：will/be going to ⑤ 现在完成：have + 过去分词。' },
+      { title: '学完该做什么', body: '① 大量阅读简单读物 (Graded Readers) ② 听慢速英语 ③ 大胆写出来——哪怕错也比不写好 ④ 错了的地方做笔记，定期回看。' },
+      { title: '下一步学什么', body: '更复杂的时态（过去完成、过去进行、将来完成），被动语态，非谓语动词（不定式、动名词、分词），强调句，倒装句，虚拟语气。' },
+    ],
+    advancedExercises: [
+      { type: 'correction', question: '综合改错：If I will be rich, I would buy a house which is in the city where I born.', answer: 'If I were rich, I would buy a house which is in the city where I was born', explain: '虚拟用 were；where 后用完整的 was born。' },
+      { type: 'translate', question: '翻译：你认为他能成功吗？', hint: 'think / succeed', answer: 'Do you think he can succeed?', explain: '宾语从句陈述语序，主句用一般疑问。' },
+      { type: 'translate', question: '翻译：这是我读过的最好的书。', hint: 'best / ever read', answer: 'This is the best book I have ever read', explain: '最高级 + 现在完成时定语从句的经典搭配。' },
+      { type: 'translate', question: '翻译：当我到达时她已经离开了。', hint: 'arrive / had / left', answer: 'When I arrived, she had already left', explain: '过去完成时用于"过去的过去"。' },
+      { type: 'reorder', question: '排序：', options: ['have', 'learning', 'three', 'I', 'been', 'months', 'for', 'English'], answer: 'I have been learning English for three months' },
+      { type: 'choice', question: 'I wish I ___ younger.', options: ['am', 'were', 'will be'], answer: 'were', explain: 'wish 后用虚拟语气，be 用 were。' },
+    ],
+    relatedLessons: ['l10-present-perfect', 'l24-relative'],
   },
 ];

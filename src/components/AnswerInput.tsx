@@ -95,6 +95,7 @@ function CellsMode({ answer, onSubmit, revealed, onContinue, hint, autoFocus = t
 
   const handleSubmit = useCallback(() => {
     if (revealed) {
+      // 已揭晓时：仅当父级要求 onContinue 时才推进
       if (!revealed.correct && onContinue) onContinue();
       return;
     }
@@ -264,12 +265,24 @@ function FreeMode({ answer, onSubmit, revealed, onContinue, hint, placeholder, a
     if (!root || !input) return;
     const span = document.createElement('span');
     span.className = 'pad-keyspark';
-    // 放在输入框右侧光标大致位置
     const rect = input.getBoundingClientRect();
     const rootRect = root.getBoundingClientRect();
-    const w = Math.min(input.scrollWidth, rect.width);
-    const left = rect.left - rootRect.left + Math.min(w, getMeasuredWidth(input, text));
-    span.style.left = `${left - 14}px`;
+    // 考虑 input 的 text-align（居中/左对齐/右对齐）正确定位光标
+    const cs = getComputedStyle(input);
+    const align = cs.textAlign;
+    const padLeft = parseFloat(cs.paddingLeft) || 0;
+    const padRight = parseFloat(cs.paddingRight) || 0;
+    const contentWidth = rect.width - padLeft - padRight;
+    const textWidth = Math.min(contentWidth, getMeasuredWidth(input, text));
+    let cursorX: number;
+    if (align === 'center') {
+      cursorX = rect.left + rect.width / 2 + textWidth / 2;
+    } else if (align === 'right' || align === 'end') {
+      cursorX = rect.right - padRight;
+    } else {
+      cursorX = rect.left + padLeft + textWidth;
+    }
+    span.style.left = `${cursorX - rootRect.left - 14}px`;
     span.style.top = `${rect.top - rootRect.top + rect.height / 2 - 14}px`;
     root.appendChild(span);
     setTimeout(() => span.remove(), 600);
@@ -295,7 +308,7 @@ function FreeMode({ answer, onSubmit, revealed, onContinue, hint, placeholder, a
   }
 
   useEffect(() => {
-    if (!revealed || revealed.correct) return;
+    if (!revealed || revealed.correct || !onContinue) return;
     let armed = false;
     const armTimer = setTimeout(() => { armed = true; }, 300);
     function onKey(e: KeyboardEvent) {
@@ -402,14 +415,11 @@ function FooterControls({
   onContinue?: () => void;
   correctAnswer: string;
 }) {
+  // 输入态：始终显示"提交"
   if (!revealed) {
     return (
       <div className="mt-5 flex flex-col items-center gap-2">
-        <button
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          className="btn-accent min-w-32"
-        >
+        <button onClick={onSubmit} disabled={!canSubmit} className="btn-accent min-w-32">
           提交 <span className="font-mono text-[10px] opacity-70">↵</span>
         </button>
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
@@ -418,6 +428,9 @@ function FooterControls({
       </div>
     );
   }
+  // 揭晓态：仅当父级提供了 onContinue 时才接管"继续"按钮（QuizCard 场景）；
+  // 否则交由父级自己绘制下一步按钮（如 GrammarLesson 自带"下一题"）。
+  if (!onContinue) return null;
   if (revealed.correct) {
     return (
       <div className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-moss-700">
