@@ -10,6 +10,7 @@ import { Grammar } from './pages/Grammar';
 import { GrammarLesson } from './pages/GrammarLesson';
 import { Stats } from './pages/Stats';
 import { Settings } from './pages/Settings';
+import { WeeklyReport } from './pages/WeeklyReport';
 
 // 使用 HashRouter：URL 形如 /#/learn，GitHub Pages 等静态托管刷新不会 404
 export const router = createHashRouter([
@@ -29,6 +30,7 @@ export const router = createHashRouter([
       { path: 'grammar', element: <Grammar /> },
       { path: 'grammar/:lessonId', element: <GrammarLesson /> },
       { path: 'stats', element: <Stats /> },
+      { path: 'weekly', element: <WeeklyReport /> },
       { path: 'settings', element: <Settings /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

@@ -6,6 +6,23 @@ export type LearnOrder = 'sequential' | 'random';
 export type AIProvider = 'openai' | 'gemini';
 export type AIEndpoint = 'chat' | 'responses';
 export type ReviewAlgorithm = 'sm2' | 'ebbinghaus';
+/** 学习模式：classic = 现有流程；enhanced = 启用 5min 微复习/主动回忆/错词加权等 */
+export type LearningMode = 'classic' | 'enhanced';
+
+export interface EnhancedConfig {
+  /** 学完新词后启动 5 分钟内的快闪复习 */
+  microReview: boolean;
+  /** 错词加权进 Review：高错频词优先 / 重复出现 */
+  wrongWeighted: boolean;
+  /** Review 揭晓后弹出"用词造句"步骤 */
+  activeRecall: boolean;
+  /** 词卡显示后自动慢速朗读两遍 */
+  autoSlowTTS: boolean;
+  /** 启用录音回放对比 */
+  recordingEnabled: boolean;
+  /** 词卡显示词根/词缀同源词面板 */
+  showWordRoots: boolean;
+}
 
 export interface AIConfig {
   enabled: boolean;
@@ -45,6 +62,15 @@ export const DEFAULT_TTS: TTSConfig = {
   pitch: 1,
 };
 
+export const DEFAULT_ENHANCED: EnhancedConfig = {
+  microReview: true,
+  wrongWeighted: true,
+  activeRecall: true,
+  autoSlowTTS: true,
+  recordingEnabled: true,
+  showWordRoots: true,
+};
+
 interface SettingsState {
   activeLevel: LevelId;
   dailyNewWords: number;
@@ -54,6 +80,8 @@ interface SettingsState {
   sfxEnabled: boolean;
   tts: TTSConfig;
   ai: AIConfig;
+  learningMode: LearningMode;
+  enhanced: EnhancedConfig;
   loaded: boolean;
   load: () => Promise<void>;
   setActiveLevel: (id: LevelId) => Promise<void>;
@@ -64,6 +92,8 @@ interface SettingsState {
   setSfxEnabled: (b: boolean) => Promise<void>;
   setTTS: (cfg: Partial<TTSConfig>) => Promise<void>;
   setAI: (cfg: Partial<AIConfig>) => Promise<void>;
+  setLearningMode: (m: LearningMode) => Promise<void>;
+  setEnhanced: (cfg: Partial<EnhancedConfig>) => Promise<void>;
 }
 
 export const useSettings = create<SettingsState>((set, get) => ({
@@ -75,9 +105,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
   sfxEnabled: false,
   tts: DEFAULT_TTS,
   ai: DEFAULT_AI,
+  learningMode: 'classic',
+  enhanced: DEFAULT_ENHANCED,
   loaded: false,
   async load() {
-    const [lvl, dnw, drl, order, algo, sfx, tts, ai] = await Promise.all([
+    const [lvl, dnw, drl, order, algo, sfx, tts, ai, mode, enh] = await Promise.all([
       getSetting<LevelId>('activeLevel', 'junior'),
       getSetting<number>('dailyNewWords', 20),
       getSetting<number>('dailyReviewLimit', 100),
@@ -86,6 +118,8 @@ export const useSettings = create<SettingsState>((set, get) => ({
       getSetting<boolean>('sfxEnabled', false),
       getSetting<TTSConfig>('tts', DEFAULT_TTS),
       getSetting<AIConfig>('ai', DEFAULT_AI),
+      getSetting<LearningMode>('learningMode', 'classic'),
+      getSetting<EnhancedConfig>('enhanced', DEFAULT_ENHANCED),
     ]);
     set({
       activeLevel: lvl,
@@ -96,6 +130,8 @@ export const useSettings = create<SettingsState>((set, get) => ({
       sfxEnabled: sfx,
       tts: { ...DEFAULT_TTS, ...tts },
       ai: { ...DEFAULT_AI, ...ai },
+      learningMode: mode,
+      enhanced: { ...DEFAULT_ENHANCED, ...enh },
       loaded: true,
     });
   },
@@ -132,5 +168,14 @@ export const useSettings = create<SettingsState>((set, get) => ({
     const next = { ...get().ai, ...cfg };
     await setSetting('ai', next);
     set({ ai: next });
+  },
+  async setLearningMode(m) {
+    await setSetting('learningMode', m);
+    set({ learningMode: m });
+  },
+  async setEnhanced(cfg) {
+    const next = { ...get().enhanced, ...cfg };
+    await setSetting('enhanced', next);
+    set({ enhanced: next });
   },
 }));

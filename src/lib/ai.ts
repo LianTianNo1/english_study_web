@@ -222,7 +222,7 @@ export async function batchGenerateMnemonics(
 严格要求：
 - ipa 必须用国际音标符号（重音符 ˈ、长音 ː），不要用 KK 或字母拼音
 - tip 必须简短易记
-- examples 给 2 个例句，必须包含 zh 翻译
+- examples 给 2 个例句，**必须来自真实英语语境**：新闻、对话、小说、日常表达。绝对不要造句腔（如 "I am happy" 这种），优先选有动词搭配、定语从句、介词短语等真实结构。例句长度 8-15 词为佳
 - 严格保持顺序对应输入`,
       },
     ],
@@ -258,4 +258,101 @@ export async function explainWrongAnswer(question: string, userAnswer: string, c
     ],
     cfg
   );
+}
+
+/* ---------- 词根 / 词缀关联 ---------- */
+export interface WordRootResult {
+  root: string;
+  meaning: string;
+  family: { word: string; gloss: string }[];
+}
+
+export async function generateWordRoot(word: string, translation: string, cfg: AIConfig, signal?: AbortSignal): Promise<WordRootResult> {
+  const out = await chat(
+    [
+      {
+        role: 'system',
+        content: '你是英文词源学家。给出英文单词的词根/词缀和 5-8 个同根词。严格输出 JSON，不要任何额外文字或代码块标记。',
+      },
+      {
+        role: 'user',
+        content: `单词：${word}（${translation}）
+
+输出 JSON：
+{
+  "root": "词根/词缀本体，如 dict / pre- / -tion",
+  "meaning": "中文含义（≤ 15 字）",
+  "family": [
+    { "word": "predict", "gloss": "预言、预测" },
+    { "word": "verdict", "gloss": "裁决" }
+  ]
+}
+
+要求：
+- 只输出一条最核心的词根/前缀/后缀
+- family 给 5-8 个真正同根的常见词，按使用频率排序，gloss 用 ≤ 8 字的中文释义
+- 当前单词若本身在 family 中可以保留；若该词无明显词根（如外来语 / 拟声词），返回 root="—", family=[]`,
+      },
+    ],
+    cfg,
+    signal
+  );
+  try {
+    const clean = out.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const j = JSON.parse(clean);
+    return {
+      root: String(j.root ?? '—'),
+      meaning: String(j.meaning ?? ''),
+      family: Array.isArray(j.family)
+        ? j.family
+            .map((x: any) => ({ word: String(x?.word ?? ''), gloss: String(x?.gloss ?? '') }))
+            .filter((x: { word: string }) => x.word)
+            .slice(0, 8)
+        : [],
+    };
+  } catch {
+    throw new AIError('AI 返回内容无法解析为词根 JSON');
+  }
+}
+
+/* ---------- 用户造句点评（主动回忆） ---------- */
+export interface SentenceEvaluation {
+  score: number;       // 0-5
+  feedback: string;    // 简短中文点评（≤ 60 字）
+}
+
+export async function evaluateUserSentence(word: string, sentence: string, cfg: AIConfig, signal?: AbortSignal): Promise<SentenceEvaluation> {
+  const out = await chat(
+    [
+      {
+        role: 'system',
+        content: '你是英语作文教练。学习者用指定单词造句，请打分并简短点评。严格输出 JSON。',
+      },
+      {
+        role: 'user',
+        content: `目标单词：${word}
+学习者造句：${sentence}
+
+输出 JSON：{"score": 0-5 的整数, "feedback": "中文点评 ≤ 60 字"}
+
+评分维度：
+- 是否正确使用该单词（最关键）
+- 语法是否正确
+- 表达是否自然
+- 5 = 完美；4 = 小瑕疵；3 = 可读但有错；2 = 多处错误；1 = 单词使用错误；0 = 完全错误`,
+      },
+    ],
+    cfg,
+    signal
+  );
+  try {
+    const clean = out.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const j = JSON.parse(clean);
+    return {
+      score: Math.max(0, Math.min(5, Number(j.score ?? 0))),
+      feedback: String(j.feedback ?? ''),
+    };
+  } catch {
+    throw new AIError('AI 返回无法解析为评分 JSON');
+  }
 }

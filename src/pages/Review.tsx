@@ -7,14 +7,16 @@ import type { ProgressRecord, WordRecord } from '@/db/types';
 import { INITIAL_SRS, scheduleNext, nextReviewAtFor, type Quality } from '@/features/srs';
 import { useSettings } from '@/stores/settingsStore';
 import { Volume2, Trophy, Eye, Star } from 'lucide-react';
-import { speak } from '@/lib/tts';
+import { speak, speakTwice } from '@/lib/tts';
 import { cn } from '@/lib/utils';
+import { ActiveRecallSentence } from '@/components/ActiveRecallSentence';
 
 type Item = { progress: ProgressRecord; word: WordRecord };
 
 export function Review() {
   const navigate = useNavigate();
-  const { dailyReviewLimit, reviewAlgorithm, loaded } = useSettings();
+  const { dailyReviewLimit, reviewAlgorithm, loaded, learningMode, enhanced } = useSettings();
+  const wrongWeighted = learningMode === 'enhanced' && enhanced.wrongWeighted;
   const [items, setItems] = useState<Item[]>([]);
   const [idx, setIdx] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -30,17 +32,38 @@ export function Review() {
         const w = await wordsRepo.getById(p.wordId);
         if (w) list.push({ progress: p, word: w });
       }
-      setItems(list);
+      // 错词加权：错过 ≥2 次的词复制一份插入队列前段，错越多权重越高
+      let weighted = list;
+      if (wrongWeighted) {
+        const extras: Item[] = [];
+        list.forEach((it) => {
+          const n = it.progress.wrongCount ?? 0;
+          // wrongCount 2 → +1 次  3 → +2 次  ≥4 → +3 次（上限）
+          const dup = Math.min(3, Math.max(0, n - 1));
+          for (let i = 0; i < dup; i++) extras.push(it);
+        });
+        // 把加权副本插入到前 60% 区间，避免开头全是错词
+        weighted = list.slice();
+        extras.forEach((e, i) => {
+          const pos = Math.floor((i / Math.max(1, extras.length)) * weighted.length * 0.6);
+          weighted.splice(pos, 0, e);
+        });
+      }
+      setItems(weighted);
       setStartTime(Date.now());
     })();
-  }, [loaded, dailyReviewLimit]);
+  }, [loaded, dailyReviewLimit, wrongWeighted]);
 
-  // 自动朗读当前词
+  // 自动朗读当前词；增强模式 + autoSlowTTS 时连播慢速版
   useEffect(() => {
     if (!loaded || items.length === 0 || idx >= items.length) return;
-    const t = setTimeout(() => speak(items[idx].word.word), 200);
+    const autoSlow = learningMode === 'enhanced' && enhanced.autoSlowTTS;
+    const t = setTimeout(() => {
+      if (autoSlow) speakTwice(items[idx].word.word);
+      else speak(items[idx].word.word);
+    }, 200);
     return () => clearTimeout(t);
-  }, [idx, items, loaded]);
+  }, [idx, items, loaded, learningMode, enhanced.autoSlowTTS]);
 
   if (!loaded) return null;
   const current = items[idx];
@@ -154,6 +177,14 @@ export function Review() {
           </div>
         )}
       </div>
+
+      {showAnswer && learningMode === 'enhanced' && enhanced.activeRecall && (
+        <ActiveRecallSentence
+          key={current.word.id}
+          word={current.word.word}
+          wordId={current.word.id}
+        />
+      )}
 
       {showAnswer && (
         <div className="grid grid-cols-3 gap-3 animate-fade-up">

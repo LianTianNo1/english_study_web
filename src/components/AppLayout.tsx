@@ -16,12 +16,13 @@ const NAV = [
   { to: '/grammar', label: '语法', code: '03' },
   { to: '/library', label: '词库', code: '04' },
   { to: '/stats', label: '统计', code: '05' },
+  { to: '/weekly', label: '周报', code: '07' },
   { to: '/settings', label: '设置', code: '06' },
 ];
 
-// 移动端底部 Tab 仅保留 4 项高频入口；"更多" 打开抽屉显示剩余 4 项
+// 移动端底部 Tab 仅保留 4 项高频入口；"更多" 打开抽屉显示剩余项
 const MOBILE_TABS = NAV.slice(0, 4);              // 今日 / 新词 / 复习 / 错题
-const MOBILE_MORE = NAV.slice(4);                  // 语法 / 词库 / 统计 / 设置
+const MOBILE_MORE = NAV.slice(4);                  // 语法 / 词库 / 统计 / 周报 / 设置
 
 export function AppLayout() {
   const navigate = useNavigate();

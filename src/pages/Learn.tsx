@@ -14,13 +14,18 @@ import { cn, shuffle } from '@/lib/utils';
 import { mnemonicsRepo } from '@/db/repositories/mnemonics';
 import { batchGenerateMnemonics } from '@/lib/ai';
 import { MnemonicHint } from '@/components/MnemonicHint';
+import { PronunciationRecorder } from '@/components/PronunciationRecorder';
+import { WordRootsPanel } from '@/components/WordRootsPanel';
+import { MicroReview } from '@/components/MicroReview';
+import { speakTwice } from '@/lib/tts';
 import type { MnemonicRecord } from '@/db/types';
 
-type Stage = 'preview' | 'quiz' | 'done';
+type Stage = 'preview' | 'quiz' | 'micro' | 'done';
 
 export function Learn() {
   const navigate = useNavigate();
-  const { activeLevel, dailyNewWords, learnOrder, reviewAlgorithm, ai, loaded } = useSettings();
+  const { activeLevel, dailyNewWords, learnOrder, reviewAlgorithm, ai, loaded, learningMode, enhanced } = useSettings();
+  const isEnhanced = learningMode === 'enhanced';
   const [stage, setStage] = useState<Stage>('preview');
   const [newWords, setNewWords] = useState<WordRecord[]>([]);
   const [session, setSession] = useState<SessionState | null>(null);
@@ -137,12 +142,14 @@ export function Learn() {
     }
   }
 
-  // 预览自动朗读
+  // 预览自动朗读（增强模式 autoSlowTTS 时连播慢速版）
   useEffect(() => {
     if (stage !== 'preview' || newWords.length === 0) return;
-    const t = setTimeout(() => speak(newWords[previewIdx].word), 250);
+    const word = newWords[previewIdx].word;
+    const autoSlow = isEnhanced && enhanced.autoSlowTTS;
+    const t = setTimeout(() => { if (autoSlow) speakTwice(word); else speak(word); }, 250);
     return () => clearTimeout(t);
-  }, [stage, previewIdx, newWords]);
+  }, [stage, previewIdx, newWords, isEnhanced, enhanced.autoSlowTTS]);
 
   // 预览键盘
   useEffect(() => {
@@ -239,7 +246,12 @@ export function Learn() {
         durationMs: Date.now() - startedAtRef.current,
       });
       setSession(next);
-      setStage('done');
+      // 增强模式 + microReview 开 → 进入 5 分钟微复习；否则直接 done
+      if (isEnhanced && enhanced.microReview && newWords.length > 0) {
+        setStage('micro');
+      } else {
+        setStage('done');
+      }
     } else {
       setSession(next);
     }
@@ -393,6 +405,18 @@ export function Learn() {
               <MnemonicHint mnemonic={wordMnemonic} variant="inline" />
             </div>
           )}
+
+          {/* 增强模式：录音跟读 + 词根关联 */}
+          {isEnhanced && enhanced.recordingEnabled && (
+            <div className="mt-4">
+              <PronunciationRecorder reference={w.word} />
+            </div>
+          )}
+          {isEnhanced && enhanced.showWordRoots && (
+            <div className="mt-4">
+              <WordRootsPanel word={w} />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-2">
@@ -439,6 +463,19 @@ export function Learn() {
           onToggleStar={handleStarCurrent}
           starred={isStarred}
           mnemonic={currentQuestion.word.id !== undefined ? mnemonics.get(currentQuestion.word.id) : undefined}
+        />
+      </div>
+    );
+  }
+
+  if (stage === 'micro') {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Header chapter="01" en="Flash" zh="5 分钟微复习" />
+        <MicroReview
+          words={newWords}
+          onComplete={() => setStage('done')}
+          onSkip={() => setStage('done')}
         />
       </div>
     );

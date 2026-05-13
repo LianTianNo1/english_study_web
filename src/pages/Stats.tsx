@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Calendar } from 'lucide-react';
 import { LEVELS } from '@/db/types';
 import { sessionsRepo } from '@/db/repositories/sessions';
 import { progressRepo } from '@/db/repositories/progress';
@@ -65,6 +67,11 @@ export function Stats() {
         <h1 className="mt-2 font-display text-4xl font-black tracking-tight sm:text-5xl md:text-6xl">
           The <span className="italic text-persimmon">Ledger</span>
         </h1>
+        <div className="mt-4">
+          <Link to="/weekly" className="inline-flex items-center gap-2 rounded-md border border-paper3 bg-paper px-3 py-2 text-sm text-ink2 transition hover:border-ink hover:text-ink">
+            <Calendar size={14} /> 查看本周回顾报告 →
+          </Link>
+        </div>
       </header>
 
       <section className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-paper3 bg-paper3 md:grid-cols-4">

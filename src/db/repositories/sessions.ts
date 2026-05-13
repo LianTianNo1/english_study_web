@@ -30,6 +30,22 @@ export const sessionsRepo = {
     }
     return map;
   },
+
+  /** 取最近 N 天的明细记录 */
+  async recent(days = 7): Promise<SessionRecord[]> {
+    const rows = await db.sessions.toArray();
+    const keys = new Set<string>();
+    const today = new Date();
+    for (let i = 0; i < days; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      keys.add(`${y}-${m}-${day}`);
+    }
+    return rows.filter((r) => keys.has(r.date));
+  },
 };
 
 export { todayKey };

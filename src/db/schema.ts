@@ -6,6 +6,8 @@ import type {
   GrammarProgressRecord,
   SettingsRecord,
   MnemonicRecord,
+  WordRootRecord,
+  UserSentenceRecord,
 } from './types';
 
 export class AppDB extends Dexie {
@@ -15,6 +17,8 @@ export class AppDB extends Dexie {
   grammarProgress!: Table<GrammarProgressRecord, string>;
   settings!: Table<SettingsRecord, string>;
   mnemonics!: Table<MnemonicRecord, number>;
+  wordRoots!: Table<WordRootRecord, number>;
+  userSentences!: Table<UserSentenceRecord, number>;
 
   constructor() {
     super('english-hub');
@@ -32,6 +36,11 @@ export class AppDB extends Dexie {
     // v3: AI 巧记缓存
     this.version(3).stores({
       mnemonics: '&wordId, word, createdAt',
+    });
+    // v4: 词根关联 + 用户造句记录
+    this.version(4).stores({
+      wordRoots: '&wordId, word, root, createdAt',
+      userSentences: '++id, wordId, createdAt',
     });
   }
 }

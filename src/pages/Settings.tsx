@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LEVELS, type LevelId } from '@/db/types';
-import { useSettings, type AIProvider, type AIEndpoint, type LearnOrder, type ReviewAlgorithm } from '@/stores/settingsStore';
+import { useSettings, type AIProvider, type AIEndpoint, type LearnOrder, type ReviewAlgorithm, type LearningMode } from '@/stores/settingsStore';
 import { db } from '@/db/schema';
 import { getLevelCount, importLevel } from '@/db/importer';
 import { Download, RefreshCw, Trash2, Volume2, Sparkles, Loader2, Check, Upload, ShieldAlert } from 'lucide-react';
@@ -12,7 +12,10 @@ import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportRepor
 export function Settings() {
   const {
     activeLevel, dailyNewWords, dailyReviewLimit, learnOrder, reviewAlgorithm, sfxEnabled, tts, ai,
-    setActiveLevel, setDailyNewWords, setDailyReviewLimit, setLearnOrder, setReviewAlgorithm, setSfxEnabled, setTTS, setAI, loaded,
+    learningMode, enhanced,
+    setActiveLevel, setDailyNewWords, setDailyReviewLimit, setLearnOrder, setReviewAlgorithm, setSfxEnabled, setTTS, setAI,
+    setLearningMode, setEnhanced,
+    loaded,
   } = useSettings();
 
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -116,6 +119,80 @@ export function Settings() {
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">chapter 06 · preferences</div>
           <h1 className="mt-2 font-display text-4xl sm:text-5xl font-black tracking-tight">设置</h1>
         </header>
+
+      {/* ============= 学习模式 (Classic / Enhanced) ============= */}
+      <Section id="mode" title="学习模式" sub="learning mode · classic / enhanced">
+        <Field label="选择模式" hint="Enhanced 模式启用 5min 微复习、错词加权、主动造句、词根关联等强化机制。可在下方按需关闭单项。">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ModeTile
+              active={learningMode === 'classic'}
+              title="经典模式"
+              en="Classic"
+              sub="原有流程：预览 → 练习 → 复习 → 错题专攻。专注、零干扰。"
+              onClick={() => setLearningMode('classic')}
+            />
+            <ModeTile
+              active={learningMode === 'enhanced'}
+              title="增强模式"
+              en="Enhanced"
+              sub="叠加 5 分钟微复习、错词加权、AI 造句点评、慢速跟读、词根关联与周报。"
+              onClick={() => setLearningMode('enhanced')}
+            />
+          </div>
+        </Field>
+
+        {learningMode === 'enhanced' && (
+          <>
+            <div className="rounded-md border border-persimmon/30 bg-persimmon-50/30 p-3 font-mono text-[10px] uppercase tracking-wider text-persimmon-700">
+              enhanced features · 按需开关下方任一项
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <EnhancedToggle
+                label="5 分钟微复习"
+                en="micro review"
+                sub="学完新词后即刻启动 5 分钟内的快闪复习——艾宾浩斯曲线的第一拐点"
+                on={enhanced.microReview}
+                onChange={(b) => setEnhanced({ microReview: b })}
+              />
+              <EnhancedToggle
+                label="错词加权复习"
+                en="wrong-weighted"
+                sub="错过 ≥2 次的词自动混入每日复习，比常规词更频繁出现"
+                on={enhanced.wrongWeighted}
+                onChange={(b) => setEnhanced({ wrongWeighted: b })}
+              />
+              <EnhancedToggle
+                label="主动回忆造句"
+                en="active recall"
+                sub="复习揭晓后用该词造一个句子，AI 即时点评。从被动认词 → 主动产出"
+                on={enhanced.activeRecall}
+                onChange={(b) => setEnhanced({ activeRecall: b })}
+              />
+              <EnhancedToggle
+                label="慢速朗读 ×2"
+                en="auto slow tts"
+                sub="词卡显示后自动正常朗读 + 慢速朗读各一遍，强化听觉编码"
+                on={enhanced.autoSlowTTS}
+                onChange={(b) => setEnhanced({ autoSlowTTS: b })}
+              />
+              <EnhancedToggle
+                label="录音跟读对比"
+                en="recording"
+                sub="按住按钮录制自己的发音，松开后回放与原声对比"
+                on={enhanced.recordingEnabled}
+                onChange={(b) => setEnhanced({ recordingEnabled: b })}
+              />
+              <EnhancedToggle
+                label="词根 / 词缀关联"
+                en="word roots"
+                sub="AI 提取词根并展示 5-8 个同根词，结果永久缓存，下次免费"
+                on={enhanced.showWordRoots}
+                onChange={(b) => setEnhanced({ showWordRoots: b })}
+              />
+            </div>
+          </>
+        )}
+      </Section>
 
       {/* 学习偏好 */}
       <Section id="study" title="学习偏好" sub="study preferences">
@@ -655,6 +732,45 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (b
       </span>
       <span onClick={() => onChange(!checked)}>{label}</span>
     </label>
+  );
+}
+
+function ModeTile({ active, title, en, sub, onClick }: { active: boolean; title: string; en: string; sub: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'group relative flex flex-col gap-2 rounded-lg border p-4 text-left transition-all',
+        active ? 'border-persimmon bg-persimmon-50/40 shadow-paper' : 'border-paper3 bg-paper hover:border-ink'
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">{en}</span>
+        <span className={cn('grid h-5 w-5 place-items-center rounded-full border', active ? 'border-persimmon bg-persimmon text-paper' : 'border-paper3')}>
+          {active && <Check size={12} />}
+        </span>
+      </div>
+      <div className="font-display text-xl font-bold text-ink">{title}</div>
+      <p className="text-xs text-ink3 leading-relaxed">{sub}</p>
+    </button>
+  );
+}
+
+function EnhancedToggle({ label, en, sub, on, onChange }: { label: string; en: string; sub: string; on: boolean; onChange: (b: boolean) => void }) {
+  return (
+    <div className={cn(
+      'flex items-start gap-3 rounded-md border p-3 transition-colors',
+      on ? 'border-persimmon/50 bg-paper' : 'border-paper3 bg-paper2/50'
+    )}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-sm font-bold text-ink">{label}</span>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-ink3">{en}</span>
+        </div>
+        <p className="mt-1 text-xs text-ink3 leading-relaxed">{sub}</p>
+      </div>
+      <Toggle on={on} onChange={onChange} />
+    </div>
   );
 }
 

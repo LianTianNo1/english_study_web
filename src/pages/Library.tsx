@@ -7,6 +7,8 @@ import { speak } from '@/lib/tts';
 import { cn } from '@/lib/utils';
 import { AIPanel } from '@/components/AIPanel';
 import { MnemonicHint } from '@/components/MnemonicHint';
+import { WordRootsPanel } from '@/components/WordRootsPanel';
+import { PronunciationRecorder } from '@/components/PronunciationRecorder';
 import { useSettings } from '@/stores/settingsStore';
 import { explainWord } from '@/lib/ai';
 import { mnemonicsRepo } from '@/db/repositories/mnemonics';
@@ -20,6 +22,9 @@ export function Library() {
   const [selected, setSelected] = useState<WordRecord | null>(null);
   const [mnemonic, setMnemonic] = useState<MnemonicRecord | undefined>();
   const aiCfg = useSettings((s) => s.ai);
+  const learningMode = useSettings((s) => s.learningMode);
+  const enhanced = useSettings((s) => s.enhanced);
+  const isEnhanced = learningMode === 'enhanced';
 
   useEffect(() => {
     if (selected?.id !== undefined) mnemonicsRepo.get(selected.id).then(setMnemonic);
@@ -170,6 +175,16 @@ export function Library() {
               {mnemonic && (
                 <div className="mt-5">
                   <MnemonicHint mnemonic={mnemonic} variant="inline" />
+                </div>
+              )}
+              {isEnhanced && enhanced.recordingEnabled && (
+                <div className="mt-4">
+                  <PronunciationRecorder reference={selected.word} />
+                </div>
+              )}
+              {isEnhanced && enhanced.showWordRoots && (
+                <div className="mt-4">
+                  <WordRootsPanel word={selected} />
                 </div>
               )}
               <AIPanel

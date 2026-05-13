@@ -116,45 +116,62 @@ function pickVoice(targetURI?: string): SpeechSynthesisVoice | undefined {
   return natural ?? en[0];
 }
 
-export function speak(text: string) {
-  if (!hasSynth() || !text) return;
-  warmUpTTS();
-  const { tts } = useSettings.getState();
+interface SpeakOptions {
+  /** 倍率覆盖（相对 user-pref rate 的乘数），默认 1 */
+  rateMultiplier?: number;
+  /** 朗读完成回调（用于二连播） */
+  onEnd?: () => void;
+}
 
+function speakOnce(text: string, opts: SpeakOptions = {}) {
+  if (!hasSynth() || !text) return;
+  const { tts } = useSettings.getState();
   const fire = () => {
     unstickSynth();
-    try {
-      window.speechSynthesis.cancel();
-    } catch { /* noop */ }
+    try { window.speechSynthesis.cancel(); } catch { /* noop */ }
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = clamp(tts.rate, 0.5, 2);
+    const mult = opts.rateMultiplier ?? 1;
+    u.rate = clamp(tts.rate * mult, 0.3, 2);
     u.pitch = clamp(tts.pitch, 0, 2);
     u.lang = 'en-US';
     const v = pickVoice(tts.voiceURI);
-    if (v) {
-      u.voice = v;
-      u.lang = v.lang || 'en-US';
-    }
+    if (v) { u.voice = v; u.lang = v.lang || 'en-US'; }
     u.onerror = (e) => {
-      // Chrome 偶发 "interrupted" / "canceled"，可忽略；其余打日志
       const err = (e as SpeechSynthesisErrorEvent).error;
       if (err && err !== 'interrupted' && err !== 'canceled') {
         console.warn('[tts] speak error:', err);
       }
     };
-    // Chrome 桌面长会话 bug：必须先 resume，再 speak
-    setTimeout(() => {
-      unstickSynth();
-      window.speechSynthesis.speak(u);
-    }, 0);
+    if (opts.onEnd) u.onend = () => opts.onEnd?.();
+    setTimeout(() => { unstickSynth(); window.speechSynthesis.speak(u); }, 0);
   };
+  if (refreshVoices().length === 0) ensureVoices().then(fire);
+  else fire();
+}
 
-  // 若声音尚未就绪，先等待（最多 3s 兜底）
-  if (refreshVoices().length === 0) {
-    ensureVoices().then(fire);
-  } else {
-    fire();
-  }
+export function speak(text: string) {
+  warmUpTTS();
+  speakOnce(text);
+}
+
+/** 慢速朗读 (60% 速度) */
+export function speakSlow(text: string) {
+  warmUpTTS();
+  speakOnce(text, { rateMultiplier: 0.6 });
+}
+
+/** 自动二连播：先正常速度，再慢速 */
+export function speakTwice(text: string) {
+  warmUpTTS();
+  speakOnce(text, {
+    onEnd: () => setTimeout(() => speakOnce(text, { rateMultiplier: 0.6 }), 300),
+  });
+}
+
+/** 停止当前朗读 */
+export function stopSpeaking() {
+  if (!hasSynth()) return;
+  try { window.speechSynthesis.cancel(); } catch { /* noop */ }
 }
 
 function clamp(n: number, min: number, max: number) {

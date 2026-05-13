@@ -102,3 +102,29 @@ export interface MnemonicRecord {
   createdAt: number;
   model?: string;
 }
+
+/** AI 生成的词根/词缀关联（按 wordId 缓存） */
+export interface WordRootRecord {
+  wordId: number;
+  word: string;
+  /** 词根/词缀本体，如 dict / pre- / -tion */
+  root: string;
+  /** 含义注释 */
+  meaning: string;
+  /** 同根词族：5 ~ 8 个 */
+  family: { word: string; gloss: string }[];
+  createdAt: number;
+  model?: string;
+}
+
+/** 用户造句记录（主动回忆，用于复盘） */
+export interface UserSentenceRecord {
+  id?: number;
+  wordId: number;
+  word: string;
+  sentence: string;
+  /** AI 评分 0-5；若未启用 AI 则为 null */
+  score?: number;
+  feedback?: string;
+  createdAt: number;
+}
