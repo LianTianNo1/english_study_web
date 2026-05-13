@@ -46,6 +46,22 @@ export interface TTSConfig {
   pitch: number;
 }
 
+export interface GistConfig {
+  gistId: string;
+  token: string;
+  autoSync: boolean;
+  includeAIConfig: boolean;
+  lastSyncedAt?: string;
+  lastSyncStatus?: 'ok' | 'error';
+}
+
+export const DEFAULT_GIST: GistConfig = {
+  gistId: '',
+  token: '',
+  autoSync: false,
+  includeAIConfig: false,
+};
+
 export const DEFAULT_AI: AIConfig = {
   enabled: false,
   provider: 'openai',
@@ -85,6 +101,7 @@ interface SettingsState {
   ai: AIConfig;
   learningMode: LearningMode;
   enhanced: EnhancedConfig;
+  gist: GistConfig;
   loaded: boolean;
   load: () => Promise<void>;
   setActiveLevel: (id: LevelId) => Promise<void>;
@@ -97,6 +114,7 @@ interface SettingsState {
   setAI: (cfg: Partial<AIConfig>) => Promise<void>;
   setLearningMode: (m: LearningMode) => Promise<void>;
   setEnhanced: (cfg: Partial<EnhancedConfig>) => Promise<void>;
+  setGist: (cfg: Partial<GistConfig>) => Promise<void>;
 }
 
 export const useSettings = create<SettingsState>((set, get) => ({
@@ -110,9 +128,10 @@ export const useSettings = create<SettingsState>((set, get) => ({
   ai: DEFAULT_AI,
   learningMode: 'classic',
   enhanced: DEFAULT_ENHANCED,
+  gist: DEFAULT_GIST,
   loaded: false,
   async load() {
-    const [lvl, dnw, drl, order, algo, sfx, tts, ai, mode, enh] = await Promise.all([
+    const [lvl, dnw, drl, order, algo, sfx, tts, ai, mode, enh, gist] = await Promise.all([
       getSetting<LevelId>('activeLevel', 'junior'),
       getSetting<number>('dailyNewWords', 20),
       getSetting<number>('dailyReviewLimit', 100),
@@ -123,6 +142,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
       getSetting<AIConfig>('ai', DEFAULT_AI),
       getSetting<LearningMode>('learningMode', 'classic'),
       getSetting<EnhancedConfig>('enhanced', DEFAULT_ENHANCED),
+      getSetting<GistConfig>('gist', DEFAULT_GIST),
     ]);
     set({
       activeLevel: lvl,
@@ -135,6 +155,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
       ai: { ...DEFAULT_AI, ...ai },
       learningMode: mode,
       enhanced: { ...DEFAULT_ENHANCED, ...enh },
+      gist: { ...DEFAULT_GIST, ...gist },
       loaded: true,
     });
   },
@@ -180,5 +201,10 @@ export const useSettings = create<SettingsState>((set, get) => ({
     const next = { ...get().enhanced, ...cfg };
     await setSetting('enhanced', next);
     set({ enhanced: next });
+  },
+  async setGist(cfg) {
+    const next = { ...get().gist, ...cfg };
+    await setSetting('gist', next);
+    set({ gist: next });
   },
 }));
