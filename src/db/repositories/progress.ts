@@ -16,9 +16,14 @@ export const progressRepo = {
   },
 
   async dueForReview(now: number = Date.now(), limit = 100): Promise<ProgressRecord[]> {
+    // 判定到期：把"今天结束"作为门槛——只要预定复习日历日 ≤ 今天，
+    // 无论是早晨还是晚上打开都算到期。修复旧版按学习时分秒计算导致的"早上没复习"问题。
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+    const threshold = endOfToday.getTime();
     return db.progress
       .where('nextReviewAt')
-      .belowOrEqual(now)
+      .belowOrEqual(threshold)
       .filter((r) => r.status === 'review' || r.status === 'learning')
       .limit(limit)
       .toArray();

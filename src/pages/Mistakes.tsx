@@ -175,30 +175,31 @@ export function Mistakes() {
           {items.map(({ progress, word }) => {
             const lvlName = LEVELS.find((l) => l.id === word.levelId)?.name;
             return (
-              <li key={word.id} className="flex items-center gap-3 rounded-md border border-paper3 bg-paper p-3 sm:gap-4 sm:p-4">
-                <button onClick={() => speak(word.word)} className="btn-icon shrink-0">
+              <li key={word.id} className="flex w-full items-center gap-2 overflow-hidden rounded-md border border-paper3 bg-paper p-3 sm:gap-4 sm:p-4">
+                <button onClick={() => speak(word.word)} className="btn-icon !h-8 !w-8 shrink-0 sm:!h-9 sm:!w-9">
                   <Volume2 size={14} />
                 </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-display text-xl font-bold text-ink">{word.word}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="font-display text-lg font-bold text-ink break-all sm:text-xl">{word.word}</span>
                     <span className="tag">{lvlName}</span>
+                    {tab === 'wrong' && (
+                      <span className="font-mono text-[10px] text-crimson sm:hidden">×{progress.wrongCount ?? 0}</span>
+                    )}
                   </div>
-                  <div className="truncate text-sm text-ink3">
+                  <div className="truncate text-xs text-ink3 sm:text-sm">
                     {word.translations.map((t) => `${t.type || '—'} ${t.translation}`).join(' · ')}
                   </div>
                 </div>
-                <div className="hidden shrink-0 items-baseline gap-3 sm:flex">
-                  {tab === 'wrong' && (
-                    <div className="text-right">
-                      <div className="font-mono text-[10px] uppercase tracking-wider text-ink3">wrong</div>
-                      <div className="font-display text-lg font-bold text-crimson">{progress.wrongCount ?? 0}</div>
-                    </div>
-                  )}
-                </div>
+                {tab === 'wrong' && (
+                  <div className="hidden shrink-0 text-right sm:block">
+                    <div className="font-mono text-[10px] uppercase tracking-wider text-ink3">wrong</div>
+                    <div className="font-display text-lg font-bold text-crimson">{progress.wrongCount ?? 0}</div>
+                  </div>
+                )}
                 <button
                   onClick={() => toggleStar(word)}
-                  className={cn('btn-icon shrink-0', progress.starred && 'border-persimmon text-persimmon')}
+                  className={cn('btn-icon !h-8 !w-8 shrink-0 sm:!h-9 sm:!w-9', progress.starred && 'border-persimmon text-persimmon')}
                   title="收藏/取消"
                 >
                   <Star size={14} className={cn(progress.starred && 'fill-persimmon')} />

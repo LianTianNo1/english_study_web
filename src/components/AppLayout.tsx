@@ -5,6 +5,7 @@ import { isAnyImported } from '@/db/importer';
 import { useSettings } from '@/stores/settingsStore';
 import { cn } from '@/lib/utils';
 import { setSfxEnabled } from '@/lib/sfx';
+import { warmUpTTS } from '@/lib/tts';
 import { MobileSheet } from './MobileSheet';
 
 const NAV = [
@@ -46,6 +47,21 @@ export function AppLayout() {
   useEffect(() => {
     setSfxEnabled(sfxEnabled);
   }, [sfxEnabled]);
+
+  // 移动端 / 桌面端 Chrome 都需要"用户手势"激活 TTS：监听首次任意 pointer/click
+  useEffect(() => {
+    const onFirstInteract = () => {
+      warmUpTTS();
+      window.removeEventListener('pointerdown', onFirstInteract);
+      window.removeEventListener('keydown', onFirstInteract);
+    };
+    window.addEventListener('pointerdown', onFirstInteract, { once: true });
+    window.addEventListener('keydown', onFirstInteract, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', onFirstInteract);
+      window.removeEventListener('keydown', onFirstInteract);
+    };
+  }, []);
 
   if (!ready) {
     return (
