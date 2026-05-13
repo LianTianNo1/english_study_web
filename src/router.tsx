@@ -16,6 +16,7 @@ const GrammarLesson = lazy(() => import('./pages/GrammarLesson').then((m) => ({ 
 const Stats = lazy(() => import('./pages/Stats').then((m) => ({ default: m.Stats })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const WeeklyReport = lazy(() => import('./pages/WeeklyReport').then((m) => ({ default: m.WeeklyReport })));
+const Listening = lazy(() => import('./pages/Listening').then((m) => ({ default: m.Listening })));
 
 function PageFallback() {
   return (
@@ -43,6 +44,7 @@ export const router = createHashRouter([
       { path: 'library', element: <S><Library /></S> },
       { path: 'learn', element: <S><Learn /></S> },
       { path: 'review', element: <S><Review /></S> },
+      { path: 'listening', element: <S><Listening /></S> },
       { path: 'mistakes', element: <S><Mistakes /></S> },
       { path: 'grammar', element: <S><Grammar /></S> },
       { path: 'grammar/:lessonId', element: <S><GrammarLesson /></S> },

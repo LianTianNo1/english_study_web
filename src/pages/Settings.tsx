@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { listVoices, speak, whenVoicesReady, type VoiceInfo } from '@/lib/tts';
 import { fetchModels } from '@/lib/ai';
 import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportReport, type ImportStrategy } from '@/lib/backup';
+import { getNotificationPermission, requestNotificationPermission, hasNotificationSupport, checkAndNotify } from '@/lib/notifications';
+import { importCustomWords, type CustomImportResult } from '@/lib/customImport';
 
 export function Settings() {
   const {
@@ -188,6 +190,10 @@ export function Settings() {
                 sub="AI 提取词根并展示 5-8 个同根词，结果永久缓存，下次免费"
                 on={enhanced.showWordRoots}
                 onChange={(b) => setEnhanced({ showWordRoots: b })}
+              />
+              <DailyReminderToggle
+                on={enhanced.dailyReminder}
+                onChange={(b) => setEnhanced({ dailyReminder: b })}
               />
             </div>
           </>
@@ -429,7 +435,7 @@ export function Settings() {
       {/* 词库管理 */}
       <Section id="library" title="词库管理" sub="dictionaries">
         <div className="grid gap-2">
-          {LEVELS.map((l) => {
+          {LEVELS.filter((l) => l.id !== 'custom').map((l) => {
             const imported = (counts[l.id] ?? 0) > 0;
             const isImporting = importing === l.id;
             return (
@@ -451,6 +457,9 @@ export function Settings() {
             );
           })}
         </div>
+
+        {/* 自定义词库 */}
+        <CustomLibraryImport currentCount={counts['custom'] ?? 0} onImported={(n) => setCounts((m) => ({ ...m, custom: (m.custom ?? 0) + n }))} />
       </Section>
 
       {/* 数据备份 */}
@@ -734,6 +743,119 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (b
       </span>
       <span onClick={() => onChange(!checked)}>{label}</span>
     </label>
+  );
+}
+
+/** 自定义词库导入 (CSV/JSON) */
+function CustomLibraryImport({ currentCount, onImported }: { currentCount: number; onImported: (n: number) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<CustomImportResult | null>(null);
+  const [error, setError] = useState('');
+  const [strategy, setStrategy] = useState<'merge' | 'replace'>('merge');
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setBusy(true); setError(''); setResult(null);
+    try {
+      const r = await importCustomWords(f, { strategy });
+      setResult(r);
+      onImported(r.imported);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-paper3 bg-paper2/40 p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="font-display text-base font-bold text-ink">自定义 · Custom</div>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-ink3">
+          {currentCount > 0 ? `imported · ${currentCount.toLocaleString()} words` : 'no custom words yet'}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-ink3 leading-relaxed">
+        上传 <code className="font-mono">.csv</code> / <code className="font-mono">.tsv</code> / <code className="font-mono">.json</code> 文件加入自定义词库（行业词 / 影视台词 / 复习清单皆可）。
+        CSV 表头需含 <code>word</code> 和 <code>translation</code> 两列；JSON 可用 WordRecord 标准结构或 <code>{`{word, translation, type}`}</code> 扁平结构。
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <label className="inline-flex items-center gap-1.5 text-xs text-ink2">
+          <input type="radio" name="custom-strategy" checked={strategy === 'merge'} onChange={() => setStrategy('merge')} />
+          合并（保留已有，跳过重复）
+        </label>
+        <label className="inline-flex items-center gap-1.5 text-xs text-ink2">
+          <input type="radio" name="custom-strategy" checked={strategy === 'replace'} onChange={() => setStrategy('replace')} />
+          覆盖（清空自定义词库后导入）
+        </label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input ref={fileRef} type="file" accept=".csv,.tsv,.json,.txt" onChange={handleFile} disabled={busy} className="hidden" id="custom-file-input" />
+        <label htmlFor="custom-file-input" className={cn('btn-accent text-xs cursor-pointer', busy && 'opacity-50 pointer-events-none')}>
+          {busy ? <><Loader2 size={12} className="animate-spin" /> 解析中…</> : <><Upload size={12} /> 选择文件</>}
+        </label>
+        <a
+          href={'data:text/csv;charset=utf-8,' + encodeURIComponent('word,translation,type,phrase,phraseTranslation\napple,苹果,n,,\nrun,跑、运行,v,run out of time,时间不够')}
+          download="custom-words-template.csv"
+          className="btn-ghost text-xs"
+        >
+          下载 CSV 模板
+        </a>
+      </div>
+      {error && <div className="mt-2 text-xs text-crimson">{error}</div>}
+      {result && (
+        <div className="mt-2 rounded-md border border-moss/40 bg-moss-50/60 p-2.5 text-xs text-moss-700">
+          ✓ 已导入 <b>{result.imported}</b> 条
+          {result.preview.length > 0 && <span className="ml-2 text-ink3">预览：{result.preview.join(' · ')}…</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 每日提醒：需联动浏览器通知权限 */
+function DailyReminderToggle({ on, onChange }: { on: boolean; onChange: (b: boolean) => void }) {
+  const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(() => getNotificationPermission());
+  const supported = hasNotificationSupport();
+
+  async function handleToggle(b: boolean) {
+    if (!supported) return;
+    if (b && perm !== 'granted') {
+      const next = await requestNotificationPermission();
+      setPerm(next);
+      if (next !== 'granted') return; // 用户拒绝就不打开
+    }
+    onChange(b);
+  }
+
+  const blocked = perm === 'denied';
+
+  return (
+    <div className={cn(
+      'flex items-start gap-3 rounded-md border p-3 transition-colors',
+      on && perm === 'granted' ? 'border-persimmon/50 bg-paper' : 'border-paper3 bg-paper2/50'
+    )}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-sm font-bold text-ink">每日学习提醒</span>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-ink3">daily reminder</span>
+        </div>
+        <p className="mt-1 text-xs text-ink3 leading-relaxed">
+          {!supported && '此浏览器不支持通知 API。'}
+          {supported && blocked && '通知权限已被拒绝，请到浏览器设置中允许后再试。'}
+          {supported && !blocked && '超过 22h 没学习 / 复习池 ≥ 30 词时，自动弹系统通知。PWA 安装到桌面后体验更佳。'}
+        </p>
+        {on && perm === 'granted' && (
+          <button onClick={() => checkAndNotify()} className="mt-2 font-mono text-[10px] uppercase tracking-wider text-persimmon-700 hover:text-persimmon">
+            ▸ 立即测试通知
+          </button>
+        )}
+      </div>
+      <Toggle on={on && perm === 'granted'} onChange={handleToggle} />
+    </div>
   );
 }
 

@@ -5,7 +5,8 @@ export type LevelId =
   | 'cet6'
   | 'pge'
   | 'toefl'
-  | 'sat';
+  | 'sat'
+  | 'custom';
 
 export interface LevelMeta {
   id: LevelId;
@@ -30,6 +31,8 @@ export const LEVELS: LevelMeta[] = [
   { id: 'pge',    name: '考研',   sourceFile: dataUrl('5-考研-顺序.json'),   totalEstimate: 9602 },
   { id: 'toefl',  name: '托福',   sourceFile: dataUrl('6-托福-顺序.json'),   totalEstimate: 13477 },
   { id: 'sat',    name: 'SAT',   sourceFile: dataUrl('7-SAT-顺序.json'),   totalEstimate: 8887 },
+  // 自定义词库：来源由用户上传 (CSV/JSON)，不走 sourceFile 拉取
+  { id: 'custom', name: '自定义', sourceFile: '',                          totalEstimate: 0 },
 ];
 
 export interface Translation {

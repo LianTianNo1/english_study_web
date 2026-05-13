@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, AlertCircle } from 'lucide-react';
+import { ArrowUpRight, AlertCircle, Ear } from 'lucide-react';
 import { LEVELS } from '@/db/types';
 import { useSettings } from '@/stores/settingsStore';
 import { progressRepo } from '@/db/repositories/progress';
@@ -88,6 +88,25 @@ export function Home() {
           sub={`${grammarDone} / ${GRAMMAR_LESSONS.length} 节通关`}
           tone="paper"
         />
+      </section>
+
+      {/* 听写入口 —— 增强模式下额外露出 */}
+      <section>
+        <Link
+          to="/listening"
+          className="group flex items-center gap-4 rounded-md border border-indigo2/30 bg-indigo2-50/30 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo2-500"
+        >
+          <div className="grid h-12 w-12 place-items-center rounded-md bg-indigo2-500 text-paper">
+            <Ear size={20} />
+          </div>
+          <div className="flex-1">
+            <div className="font-display text-lg font-bold text-ink">听写专项 · The Ear Test</div>
+            <div className="mt-0.5 text-sm text-ink3">
+              纯靠耳朵拼出听到的词。每组 12 个，从已学词中抽取。最快补齐听力短板。
+            </div>
+          </div>
+          <ArrowUpRight size={18} className="text-ink3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </Link>
       </section>
 
       {/* Stats strip */}

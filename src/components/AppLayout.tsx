@@ -1,17 +1,20 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Menu } from 'lucide-react';
+import { Keyboard, Menu } from 'lucide-react';
 import { isAnyImported } from '@/db/importer';
 import { useSettings } from '@/stores/settingsStore';
 import { cn } from '@/lib/utils';
 import { setSfxEnabled } from '@/lib/sfx';
 import { warmUpTTS } from '@/lib/tts';
+import { startNotificationLoop, stopNotificationLoop } from '@/lib/notifications';
 import { MobileSheet } from './MobileSheet';
+import { ShortcutsPanel } from './ShortcutsPanel';
 
 const NAV = [
   { to: '/', label: '今日', code: '00', end: true },
   { to: '/learn', label: '新词', code: '01' },
   { to: '/review', label: '复习', code: '02' },
+  { to: '/listening', label: '听写', code: '02d' },
   { to: '/mistakes', label: '错题', code: '2b' },
   { to: '/grammar', label: '语法', code: '03' },
   { to: '/library', label: '词库', code: '04' },
@@ -21,16 +24,19 @@ const NAV = [
 ];
 
 // 移动端底部 Tab 仅保留 4 项高频入口；"更多" 打开抽屉显示剩余项
-const MOBILE_TABS = NAV.slice(0, 4);              // 今日 / 新词 / 复习 / 错题
-const MOBILE_MORE = NAV.slice(4);                  // 语法 / 词库 / 统计 / 周报 / 设置
+const MOBILE_TABS = NAV.slice(0, 4);              // 今日 / 新词 / 复习 / 听写
+const MOBILE_MORE = NAV.slice(4);                  // 错题 / 语法 / 词库 / 统计 / 周报 / 设置
 
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [ready, setReady] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const load = useSettings((s) => s.load);
   const sfxEnabled = useSettings((s) => s.sfxEnabled);
+  const enhanced = useSettings((s) => s.enhanced);
+  const learningMode = useSettings((s) => s.learningMode);
 
   useEffect(() => {
     (async () => {
@@ -64,6 +70,31 @@ export function AppLayout() {
     };
   }, []);
 
+  // 每日提醒（依赖 ready 完成 + 用户开启）
+  useEffect(() => {
+    if (!ready) return;
+    if (learningMode === 'enhanced' && enhanced.dailyReminder) {
+      startNotificationLoop();
+      return () => stopNotificationLoop();
+    } else {
+      stopNotificationLoop();
+    }
+  }, [ready, learningMode, enhanced.dailyReminder]);
+
+  // 全局 ? 键打开快捷键面板
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   if (!ready) {
     return (
       <div className="flex h-full items-center justify-center font-mono text-xs uppercase tracking-[0.3em] text-ink3">
@@ -87,7 +118,7 @@ export function AppLayout() {
               — Private Study Journal
             </span>
           </div>
-          <nav className="flex items-center">
+          <nav className="flex items-center gap-1">
             {NAV.map((n) => (
               <NavLink
                 key={n.to}
@@ -95,7 +126,7 @@ export function AppLayout() {
                 end={n.end}
                 className={({ isActive }) =>
                   cn(
-                    'group relative flex items-baseline gap-1 px-3 py-2 text-sm transition-colors',
+                    'group relative flex items-baseline gap-1 px-2.5 py-2 text-sm transition-colors',
                     isActive ? 'text-ink' : 'text-ink3 hover:text-ink'
                   )
                 }
@@ -105,6 +136,14 @@ export function AppLayout() {
                 <NavIndicator path={n.to} end={!!n.end} current={location.pathname} />
               </NavLink>
             ))}
+            <button
+              onClick={() => setShortcutsOpen(true)}
+              title="快捷键 (?)"
+              aria-label="keyboard shortcuts"
+              className="ml-1 inline-grid h-8 w-8 place-items-center rounded-full border border-paper3 bg-paper text-ink3 transition-colors hover:border-ink hover:text-ink"
+            >
+              <Keyboard size={14} />
+            </button>
           </nav>
         </div>
 
@@ -203,11 +242,20 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
+        <button
+          onClick={() => { setMoreOpen(false); setShortcutsOpen(true); }}
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md border border-paper3 bg-paper px-3 py-2.5 text-sm text-ink2 transition-colors hover:border-ink"
+        >
+          <Keyboard size={14} /> 键盘快捷键
+        </button>
         <div className="mt-6 border-t border-paper3 pt-4 font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
           english hub · vol.01<br/>
           local-first · indexeddb
         </div>
       </MobileSheet>
+
+      {/* ============ 快捷键面板（全局 ?） ============ */}
+      <ShortcutsPanel open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

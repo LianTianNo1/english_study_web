@@ -22,6 +22,8 @@ export interface EnhancedConfig {
   recordingEnabled: boolean;
   /** 词卡显示词根/词缀同源词面板 */
   showWordRoots: boolean;
+  /** 每日学习提醒（系统通知） */
+  dailyReminder: boolean;
 }
 
 export interface AIConfig {
@@ -69,6 +71,7 @@ export const DEFAULT_ENHANCED: EnhancedConfig = {
   autoSlowTTS: true,
   recordingEnabled: true,
   showWordRoots: true,
+  dailyReminder: false,  // 默认关——需要用户主动同意通知权限
 };
 
 interface SettingsState {

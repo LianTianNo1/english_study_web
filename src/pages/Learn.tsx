@@ -18,6 +18,7 @@ import { MnemonicHint } from '@/components/MnemonicHint';
 import { PronunciationRecorder } from '@/components/PronunciationRecorder';
 import { WordRootsPanel } from '@/components/WordRootsPanel';
 import { MicroReview } from '@/components/MicroReview';
+import { SessionWrap } from '@/components/SessionWrap';
 import { speakTwice } from '@/lib/tts';
 import type { MnemonicRecord, WordRootRecord } from '@/db/types';
 
@@ -502,29 +503,28 @@ export function Learn() {
     );
   }
 
-  // done
+  // done — 会话即时小报
   const accuracy = session && session.totalAttempts > 0 ? Math.round((session.correctAttempts / session.totalAttempts) * 100) : 0;
-  const wrongCount = session?.wrongIds.size ?? 0;
+  const wrongIdsSet: Set<number> = session?.wrongIds ?? new Set();
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="paper-card text-center">
-        <Trophy size={40} className="mx-auto mb-3 text-persimmon" />
-        <h2 className="font-display text-3xl font-black tracking-tight">今天的功课完成了。</h2>
-        <p className="mt-2 text-sm text-ink2">
-          新学 <b className="text-persimmon">{newWords.length}</b> 词 · 准确率 <b>{accuracy}%</b> · 用时 <b className="font-mono">{fmtElapsed(elapsed)}</b>
-        </p>
-        {wrongCount > 0 && (
-          <div className="mx-auto mt-4 max-w-md rounded-md border border-crimson/40 bg-crimson-50/40 p-3 text-sm text-crimson">
-            其中 <b>{wrongCount}</b> 个词曾答错。
-            <button onClick={() => navigate('/mistakes')} className="linky ml-1 font-semibold">去错题本重练 →</button>
-          </div>
-        )}
-        <div className="mt-6 flex justify-center gap-2">
-          <button onClick={() => navigate('/')} className="btn-ghost">回首页</button>
-          <button onClick={() => location.reload()} className="btn-accent">再来一组</button>
-        </div>
-      </div>
-    </div>
+    <SessionWrap
+      words={newWords}
+      wrongIds={wrongIdsSet}
+      accuracy={accuracy}
+      elapsedLabel={fmtElapsed(elapsed)}
+      title="今天的功课完成了。"
+      subtitle={`新学 ${newWords.length} 词`}
+      onRetryWrong={(wrongs) => {
+        // 把错词作为新一轮 quiz session 立即重练
+        setSession(initSession(wrongs));
+        setStage('quiz');
+        startedAtRef.current = Date.now();
+      }}
+    >
+      <button onClick={() => navigate('/')} className="btn-ghost w-full sm:w-auto">回首页</button>
+      <button onClick={() => navigate('/listening')} className="btn-ghost w-full sm:w-auto">去听写</button>
+      <button onClick={() => location.reload()} className="btn-accent w-full sm:w-auto">再来一组</button>
+    </SessionWrap>
   );
 }
 
