@@ -9,6 +9,7 @@ import { warmUpTTS } from '@/lib/tts';
 import { startNotificationLoop, stopNotificationLoop } from '@/lib/notifications';
 import { MobileSheet } from './MobileSheet';
 import { ShortcutsPanel } from './ShortcutsPanel';
+import { useGistUrlParams } from '@/hooks/useGistUrlParams';
 
 const NAV = [
   { to: '/', label: '今日', code: '00', end: true },
@@ -33,6 +34,7 @@ export function AppLayout() {
   const [ready, setReady] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const { conflict, resolveConflict } = useGistUrlParams();
   const load = useSettings((s) => s.load);
   const sfxEnabled = useSettings((s) => s.sfxEnabled);
   const enhanced = useSettings((s) => s.enhanced);
@@ -256,6 +258,41 @@ export function AppLayout() {
 
       {/* ============ 快捷键面板（全局 ?） ============ */}
       <ShortcutsPanel open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      {/* ============ Gist 凭据冲突弹窗 ============ */}
+      <MobileSheet
+        open={!!conflict}
+        onClose={() => resolveConflict(false)}
+        side="bottom"
+        title="cloud sync · 配置冲突"
+      >
+        {conflict && (
+          <div className="space-y-4">
+            <p className="text-sm text-ink2 leading-relaxed">
+              检测到 URL 中携带新的 Gist 配置，与当前设备已存的配置不一致。
+            </p>
+            <div className="rounded-md border border-paper3 bg-paper2/50 p-3 font-mono text-[11px] space-y-1">
+              <div className="text-ink3 uppercase tracking-wider mb-1">url 中的配置</div>
+              <div>Gist ID: <span className="text-ink">{conflict.urlGistId}</span></div>
+              <div>Token: <span className="text-ink">{'*'.repeat(8)}{conflict.urlToken.slice(-4)}</span></div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={() => resolveConflict(true)}
+                className="flex-1 rounded-sm border border-ink bg-ink px-4 py-2.5 text-sm font-medium text-paper transition hover:opacity-90"
+              >
+                使用 URL 中的配置（覆盖）
+              </button>
+              <button
+                onClick={() => resolveConflict(false)}
+                className="flex-1 rounded-sm border border-paper3 px-4 py-2.5 text-sm font-medium text-ink2 transition hover:border-ink"
+              >
+                保留现有配置
+              </button>
+            </div>
+          </div>
+        )}
+      </MobileSheet>
     </div>
   );
 }
