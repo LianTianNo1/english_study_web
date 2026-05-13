@@ -7,6 +7,7 @@ import { getSetting, setSetting } from '@/db/schema';
 import type { ProgressRecord, WordRecord } from '@/db/types';
 import { INITIAL_SRS, scheduleNext, nextReviewAtFor, type Quality } from '@/features/srs';
 import { useSettings } from '@/stores/settingsStore';
+import { autoSyncToGist } from '@/lib/gist';
 import { Volume2, Trophy, Eye, Star } from 'lucide-react';
 import { speak, speakTwice } from '@/lib/tts';
 import { cn, todayKey } from '@/lib/utils';
@@ -26,6 +27,8 @@ const REVIEW_SESSION_KEY = 'reviewSession';
 export function Review() {
   const navigate = useNavigate();
   const { dailyReviewLimit, reviewAlgorithm, loaded, learningMode, enhanced } = useSettings();
+  const gist = useSettings((s) => s.gist);
+  const setGist = useSettings((s) => s.setGist);
   const wrongWeighted = learningMode === 'enhanced' && enhanced.wrongWeighted;
   const [items, setItems] = useState<Item[]>([]);
   const [idx, setIdx] = useState(0);
@@ -208,6 +211,7 @@ export function Review() {
         correctCount: stats.correct + (isCorrect ? 1 : 0),
         durationMs: Date.now() - startTime,
       });
+      void autoSyncToGist(gist, setGist);
     }
     setIdx((i) => i + 1);
   }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LEVELS, type WordRecord } from '@/db/types';
 import { useSettings } from '@/stores/settingsStore';
+import { autoSyncToGist } from '@/lib/gist';
 import { wordsRepo } from '@/db/repositories/words';
 import { progressRepo } from '@/db/repositories/progress';
 import { sessionsRepo } from '@/db/repositories/sessions';
@@ -26,7 +27,7 @@ type Stage = 'preview' | 'quiz' | 'micro' | 'done';
 
 export function Learn() {
   const navigate = useNavigate();
-  const { activeLevel, dailyNewWords, learnOrder, reviewAlgorithm, ai, loaded, learningMode, enhanced } = useSettings();
+  const { activeLevel, dailyNewWords, learnOrder, reviewAlgorithm, ai, loaded, learningMode, enhanced, gist, setGist } = useSettings();
   const isEnhanced = learningMode === 'enhanced';
   const [stage, setStage] = useState<Stage>('preview');
   const [newWords, setNewWords] = useState<WordRecord[]>([]);
@@ -265,6 +266,7 @@ export function Learn() {
         setStage('micro');
       } else {
         setStage('done');
+        void autoSyncToGist(gist, setGist);
       }
     } else {
       setSession(next);
@@ -496,7 +498,7 @@ export function Learn() {
         <Header chapter="01" en="Flash" zh="5 分钟微复习" />
         <MicroReview
           words={newWords}
-          onComplete={() => setStage('done')}
+          onComplete={() => { setStage('done'); void autoSyncToGist(gist, setGist); }}
           onSkip={() => setStage('done')}
         />
       </div>
