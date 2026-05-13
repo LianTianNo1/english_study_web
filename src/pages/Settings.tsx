@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LEVELS, type LevelId } from '@/db/types';
-import { useSettings, type AIProvider, type AIEndpoint, type LearnOrder, type ReviewAlgorithm, type LearningMode } from '@/stores/settingsStore';
+import { useSettings, type AIProvider, type AIEndpoint, type LearnOrder, type ReviewAlgorithm, type LearningMode, type GistConfig } from '@/stores/settingsStore';
 import { db } from '@/db/schema';
 import { getLevelCount, importLevel } from '@/db/importer';
-import { Download, RefreshCw, Trash2, Volume2, Sparkles, Loader2, Check, Upload, ShieldAlert } from 'lucide-react';
+import { Download, RefreshCw, Trash2, Volume2, Sparkles, Loader2, Check, Upload, ShieldAlert, Cloud, CloudUpload, CloudDownload, Link2Off, Copy, CheckCheck, Link } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { listVoices, speak, whenVoicesReady, type VoiceInfo } from '@/lib/tts';
 import { fetchModels } from '@/lib/ai';
 import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportReport, type ImportStrategy } from '@/lib/backup';
+import { pushToGist, pullFromGist } from '@/lib/gist';
 import { getNotificationPermission, requestNotificationPermission, hasNotificationSupport, checkAndNotify } from '@/lib/notifications';
 import { importCustomWords, type CustomImportResult } from '@/lib/customImport';
 
 export function Settings() {
   const {
     activeLevel, dailyNewWords, dailyReviewLimit, learnOrder, reviewAlgorithm, sfxEnabled, tts, ai,
-    learningMode, enhanced,
+    learningMode, enhanced, gist,
     setActiveLevel, setDailyNewWords, setDailyReviewLimit, setLearnOrder, setReviewAlgorithm, setSfxEnabled, setTTS, setAI,
-    setLearningMode, setEnhanced,
+    setLearningMode, setEnhanced, setGist,
     loaded,
   } = useSettings();
 
@@ -36,6 +37,14 @@ export function Settings() {
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [importError, setImportError] = useState('');
   const [importing2, setImporting2] = useState(false);
+
+  // Gist 同步状态
+  const [gistPushing, setGistPushing] = useState(false);
+  const [gistPulling, setGistPulling] = useState(false);
+  const [gistError, setGistError] = useState('');
+  const [gistSuccess, setGistSuccess] = useState('');
+  const [gistPullStrategy, setGistPullStrategy] = useState<ImportStrategy>('merge');
+  const [gistPullAIConfig, setGistPullAIConfig] = useState(false);
 
   useEffect(() => {
     whenVoicesReady(() => setVoices(listVoices()));
@@ -110,6 +119,59 @@ export function Settings() {
     } finally {
       setLoadingModels(false);
     }
+  }
+
+  async function handleGistPush() {
+    if (!gist.token) return;
+    setGistPushing(true);
+    setGistError('');
+    setGistSuccess('');
+    try {
+      const backup = await buildBackup({
+        includeSettings: true,
+        includeSessions: true,
+        includeWords: false,
+        includeAIConfig: gist.includeAIConfig,
+      });
+      const gistId = await pushToGist(backup, gist);
+      await setGist({ gistId, lastSyncedAt: new Date().toISOString(), lastSyncStatus: 'ok' });
+      setGistSuccess('推送成功');
+    } catch (e) {
+      await setGist({ lastSyncStatus: 'error' });
+      setGistError((e as Error).message);
+    } finally {
+      setGistPushing(false);
+    }
+  }
+
+  async function handleGistPull() {
+    if (!gist.token || !gist.gistId) return;
+    setGistPulling(true);
+    setGistError('');
+    setGistSuccess('');
+    try {
+      const backup = await pullFromGist(gist);
+      if (gistPullStrategy === 'replace' && !confirm('替换模式将清空当前进度、会话与语法进度。确认继续？')) {
+        setGistPulling(false);
+        return;
+      }
+      const report = await applyBackup(backup, { strategy: gistPullStrategy, applyAIConfig: gistPullAIConfig });
+      await useSettings.getState().load();
+      await setGist({ lastSyncedAt: new Date().toISOString(), lastSyncStatus: 'ok' });
+      setGistSuccess(`拉取成功 · 进度 ${report.progress} 条 · 设置 ${report.settings} 项`);
+    } catch (e) {
+      await setGist({ lastSyncStatus: 'error' });
+      setGistError((e as Error).message);
+    } finally {
+      setGistPulling(false);
+    }
+  }
+
+  function handleGistDisconnect() {
+    if (!confirm('断开配置将清除本设备保存的 Gist ID 和 Token，不影响 Gist 上的数据。确认？')) return;
+    setGist({ gistId: '', token: '', lastSyncedAt: undefined, lastSyncStatus: undefined });
+    setGistSuccess('');
+    setGistError('');
   }
 
   if (!loaded) return null;
@@ -462,6 +524,23 @@ export function Settings() {
         <CustomLibraryImport currentCount={counts['custom'] ?? 0} onImported={(n) => setCounts((m) => ({ ...m, custom: (m.custom ?? 0) + n }))} />
       </Section>
 
+      {/* ============= 云端同步 · GitHub Gist ============= */}
+      <GistSyncSection
+        gist={gist}
+        setGist={setGist}
+        pushing={gistPushing}
+        pulling={gistPulling}
+        error={gistError}
+        success={gistSuccess}
+        pullStrategy={gistPullStrategy}
+        setPullStrategy={setGistPullStrategy}
+        pullAIConfig={gistPullAIConfig}
+        setPullAIConfig={setGistPullAIConfig}
+        onPush={handleGistPush}
+        onPull={handleGistPull}
+        onDisconnect={handleGistDisconnect}
+      />
+
       {/* 数据备份 */}
       <Section id="backup" title="数据备份" sub="export · import">
         {/* 导出 */}
@@ -566,6 +645,7 @@ export function Settings() {
 
 /* 设置页大纲 —— sticky 右侧，IntersectionObserver 自动高亮当前 section */
 const TOC_ITEMS: { id: string; label: string; en: string }[] = [
+  { id: 'gist', label: '云端同步', en: 'gist sync' },
   { id: 'study', label: '学习偏好', en: 'study' },
   { id: 'tts', label: '朗读', en: 'tts' },
   { id: 'ai', label: 'AI 助手', en: 'ai' },
@@ -909,5 +989,227 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (b: boolean) => void 
     >
       <span className={cn('inline-block h-5 w-5 transform rounded-full bg-paper shadow-paper transition-transform', on ? 'translate-x-6' : 'translate-x-0.5')} />
     </button>
+  );
+}
+
+/* ============================================================
+   Gist 同步 Section
+   ============================================================ */
+
+interface GistSyncSectionProps {
+  gist: GistConfig;
+  setGist: (cfg: Partial<GistConfig>) => Promise<void>;
+  pushing: boolean;
+  pulling: boolean;
+  error: string;
+  success: string;
+  pullStrategy: ImportStrategy;
+  setPullStrategy: (s: ImportStrategy) => void;
+  pullAIConfig: boolean;
+  setPullAIConfig: (b: boolean) => void;
+  onPush: () => void;
+  onPull: () => void;
+  onDisconnect: () => void;
+}
+
+function GistSyncSection({
+  gist, setGist,
+  pushing, pulling, error, success,
+  pullStrategy, setPullStrategy,
+  pullAIConfig, setPullAIConfig,
+  onPush, onPull, onDisconnect,
+}: GistSyncSectionProps) {
+  const [copied, setCopied] = useState(false);
+  const canPush = !!gist.token;
+  const canPull = !!gist.token && !!gist.gistId;
+  const canCopy = !!gist.token && !!gist.gistId;
+  const isBusy = pushing || pulling;
+
+  function copyConfigUrl() {
+    const url = `${window.location.origin}/#/?gistId=${gist.gistId}&githubToken=${gist.token}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <Section id="gist" title="云端同步" sub="cloud sync · github gist">
+      {/* 凭据输入 */}
+      <Field label="Gist ID" hint="留空时推送将自动创建新 Gist">
+        <div className="flex gap-2">
+          <input
+            className="input font-mono flex-1"
+            value={gist.gistId}
+            onChange={(e) => setGist({ gistId: e.target.value.trim() })}
+            placeholder="a1b2c3d4e5f6…"
+          />
+          <button
+            onClick={copyConfigUrl}
+            disabled={!canCopy}
+            title="复制配置链接（用于新设备快速导入）"
+            className={cn(
+              'inline-flex shrink-0 items-center gap-1.5 rounded-sm border px-3 py-1.5 font-mono text-xs uppercase tracking-wider transition',
+              canCopy
+                ? copied
+                  ? 'border-moss bg-moss-50/50 text-moss-700'
+                  : 'border-paper3 text-ink2 hover:border-ink'
+                : 'border-paper3 text-ink3 opacity-50 cursor-not-allowed'
+            )}
+          >
+            {copied ? <><CheckCheck size={12} /> 已复制</> : <><Link size={12} /> 复制链接</>}
+          </button>
+        </div>
+        <p className="mt-1.5 font-mono text-[10px] text-ink3">
+          复制链接可在新设备直接打开完成配置导入
+        </p>
+      </Field>
+
+      <Field label="GitHub Token" hint="建议只授予 Gist 读写权限">
+        <input
+          className="input font-mono"
+          type="password"
+          value={gist.token}
+          onChange={(e) => setGist({ token: e.target.value.trim() })}
+          placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+        />
+        <a
+          href="https://github.com/settings/tokens?type=beta"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1.5 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-persimmon-700 hover:text-persimmon transition-colors"
+        >
+          <Link2Off size={10} /> 查看 Token 权限说明 ↗
+        </a>
+      </Field>
+
+      {/* 同步选项 */}
+      <Field label="同步选项">
+        <div className="flex flex-wrap gap-4">
+          <Checkbox
+            checked={gist.autoSync}
+            onChange={(b) => setGist({ autoSync: b })}
+            label="自动推送（学习/复习结束后）"
+          />
+          <Checkbox
+            checked={gist.includeAIConfig}
+            onChange={(b) => setGist({ includeAIConfig: b })}
+            label="含 AI 配置（含 API Key ⚠）"
+          />
+        </div>
+      </Field>
+
+      {/* 状态栏 */}
+      {gist.gistId && (
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider">
+          <span className={cn(
+            'h-1.5 w-1.5 rounded-full shrink-0',
+            !gist.lastSyncedAt ? 'bg-ink3' :
+            gist.lastSyncStatus === 'ok' ? 'bg-moss' : 'bg-crimson'
+          )} />
+          {!gist.lastSyncedAt && <span className="text-ink3">从未同步</span>}
+          {gist.lastSyncedAt && (
+            <>
+              <span className="text-ink3">
+                上次同步：{new Date(gist.lastSyncedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <span className={gist.lastSyncStatus === 'ok' ? 'text-moss' : 'text-crimson'}>
+                {gist.lastSyncStatus === 'ok' ? '✓ 成功' : '✗ 失败'}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 操作按钮 */}
+      <Field label="操作">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={onPush}
+            disabled={!canPush || isBusy}
+            className={cn(
+              'btn-ghost flex-1 sm:flex-none',
+              (!canPush || isBusy) && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {pushing ? <Loader2 size={14} className="animate-spin" /> : <CloudUpload size={14} />}
+            推送备份
+          </button>
+          <button
+            onClick={onPull}
+            disabled={!canPull || isBusy}
+            className={cn(
+              'btn-ghost flex-1 sm:flex-none',
+              (!canPull || isBusy) && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {pulling ? <Loader2 size={14} className="animate-spin" /> : <CloudDownload size={14} />}
+            拉取同步
+          </button>
+          {gist.gistId && (
+            <button
+              onClick={onDisconnect}
+              disabled={isBusy}
+              className="btn border border-crimson/50 text-crimson hover:bg-crimson-50 flex-1 sm:flex-none"
+            >
+              <Link2Off size={14} /> 断开配置
+            </button>
+          )}
+        </div>
+      </Field>
+
+      {/* 拉取策略 */}
+      <Field label="拉取策略" hint="决定拉取时如何处理本地已有数据">
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {(['merge', 'replace'] as ImportStrategy[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => setPullStrategy(s)}
+                className={cn(
+                  'rounded-sm border px-3 py-1.5 font-mono text-xs uppercase tracking-wider transition',
+                  pullStrategy === s ? 'border-ink bg-ink text-paper' : 'border-paper3 text-ink2 hover:border-ink'
+                )}
+              >
+                {s === 'merge' ? '合并 (推荐)' : '替换 (危险)'}
+              </button>
+            ))}
+            <span className="self-center font-mono text-[10px] text-ink3">
+              {pullStrategy === 'merge' ? '保留现有数据，按 wordId/lessonId 去重更新' : '清空后再导入（无法恢复）'}
+            </span>
+          </div>
+          <Checkbox
+            checked={pullAIConfig}
+            onChange={setPullAIConfig}
+            label="拉取时导入 AI 配置（含 API Key）"
+          />
+        </div>
+      </Field>
+
+      {/* 错误 / 成功提示 */}
+      {error && (
+        <div className="rounded-md border border-crimson bg-crimson-50/50 p-3 text-sm text-crimson">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-md border border-moss bg-moss-50/50 p-3 text-sm text-moss-700">
+          <div className="font-semibold">✓ {success}</div>
+        </div>
+      )}
+
+      {/* 安全说明 */}
+      <div className="rounded-md border border-dashed border-paper3 bg-paper2/40 p-4 text-xs text-ink3">
+        <div className="mb-1 flex items-center gap-1.5 font-mono uppercase tracking-wider">
+          <Cloud size={12} className="text-persimmon" /> gist sync · 安全说明
+        </div>
+        <ul className="ml-4 list-disc space-y-0.5">
+          <li>Token 仅存储在<b>本设备 IndexDB</b>，不经任何服务器中转</li>
+          <li>建议使用 GitHub Fine-grained PAT，只授予 <b>Gists: Read and Write</b> 权限</li>
+          <li>Gist 创建时为<b>私有（Secret）</b>，非公开可见</li>
+          <li>默认不含 API Key；勾选"含 AI 配置"时 apiKey 才写入 Gist</li>
+        </ul>
+      </div>
+    </Section>
   );
 }
