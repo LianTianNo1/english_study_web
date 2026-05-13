@@ -524,6 +524,8 @@ export function Settings() {
                   <li>会话记录 · {importReport.sessions} 条</li>
                   <li>语法关卡 · {importReport.grammarProgress} 节</li>
                   <li>AI 巧记 · {importReport.mnemonics} 条</li>
+                  {importReport.wordRoots > 0 && <li>词根关联 · {importReport.wordRoots} 条</li>}
+                  {importReport.userSentences > 0 && <li>主动造句 · {importReport.userSentences} 条</li>}
                   {importReport.words > 0 && <li>词条 · {importReport.words.toLocaleString()} 个</li>}
                   <li>设置偏好 · {importReport.settings} 项</li>
                   {importReport.skippedSettings.length > 0 && (

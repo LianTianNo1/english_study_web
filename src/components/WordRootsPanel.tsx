@@ -8,10 +8,12 @@ import { speak } from '@/lib/tts';
 
 interface Props {
   word: WordRecord;
+  /** 只读模式：无缓存时返回 null，不渲染"提取词根"按钮（Learn 页用，避免与顶部"一键增强"重复入口） */
+  readOnly?: boolean;
 }
 
 /** 词根 / 词缀关联面板：优先读缓存，未生成则按需触发 AI */
-export function WordRootsPanel({ word }: Props) {
+export function WordRootsPanel({ word, readOnly = false }: Props) {
   const ai = useSettings((s) => s.ai);
   const [rec, setRec] = useState<WordRootRecord | undefined>();
   const [loading, setLoading] = useState(false);
@@ -56,6 +58,7 @@ export function WordRootsPanel({ word }: Props) {
   }
 
   if (!rec) {
+    if (readOnly) return null;
     return (
       <div className="rounded-md border border-indigo2/20 bg-indigo2-50/40 p-3">
         <div className="flex items-center justify-between gap-2">
@@ -78,6 +81,7 @@ export function WordRootsPanel({ word }: Props) {
   }
 
   if (rec.root === '—' || rec.family.length === 0) {
+    if (readOnly) return null;
     return (
       <div className="rounded-md border border-paper3 bg-paper2 p-3 font-mono text-[10px] uppercase tracking-wider text-ink3">
         <GitBranch size={11} className="mr-1 inline" /> 该词无明显词根（外来语 / 拟声）

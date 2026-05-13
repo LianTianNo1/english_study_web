@@ -189,6 +189,13 @@ export interface MnemonicItem {
   examples?: { en: string; zh: string }[];  // 2 个例句
 }
 
+/** 一次 API 调用同时生成：巧记 + 词根族（"AI 一键增强"用） */
+export interface EnhancementItem extends MnemonicItem {
+  root?: string;            // 词根/词缀本体，如 dict / pre- / -tion
+  rootMeaning?: string;     // 词根含义
+  family?: { word: string; gloss: string }[]; // 5-8 个同根词
+}
+
 export async function batchGenerateMnemonics(
   words: { word: string; translations: string }[],
   cfg: AIConfig,
@@ -200,7 +207,8 @@ export async function batchGenerateMnemonics(
     [
       {
         role: 'system',
-        content: `你是中文母语者的英语记忆教练。为每个英文单词输出：①IPA 音标 ②巧记口诀（30 字内）③详细记忆方法（1-3 句，可选）④2 个由浅入深的例句（含中文翻译）。
+        content: `你是中文母语者的英语记忆教练，**擅长用中式梗、谐音、段子、形象化故事**让中国学习者快速记单词。
+为每个英文单词输出：①IPA 音标 ②"中式梗"巧记口诀（30 字内，必须有记忆点：谐音/双关/小段子/形象化场景，禁止干巴巴的"abil+ity=能力"那种）③详细记忆方法（1-3 句）④2 个由浅入深的例句（含中文翻译）。
 严格输出 JSON 数组，长度与输入完全一致，不要任何额外文字、解释或代码块标记。`,
       },
       {
@@ -209,20 +217,27 @@ export async function batchGenerateMnemonics(
 
 输出 JSON 数组，每项格式：
 {
-  "word": "ability",
-  "ipa": "/əˈbɪləti/",
-  "tip": "abil(能力)+ity=能干的本事",
-  "detail": "abil 来自 able(能够), -ity 是抽象名词后缀",
+  "word": "ambulance",
+  "ipa": "/ˈæmbjələns/",
+  "tip": "俺不能死！救护车 ambulance 来啦",
+  "detail": "谐音\"俺不能死\"——救护车出现时，伤员的心声。",
   "examples": [
-    { "en": "She has the ability to lead.", "zh": "她有领导能力。" },
-    { "en": "His musical ability is remarkable.", "zh": "他的音乐天赋很出众。" }
+    { "en": "Call an ambulance immediately!", "zh": "快叫救护车！" },
+    { "en": "The ambulance rushed him to the nearest hospital.", "zh": "救护车把他紧急送到最近的医院。" }
   ]
 }
 
+巧记 tip 的写法范式（任选其一）：
+- 谐音 / 中式谐音梗："pest(害虫) → 拍死它" "abandon → 我抛弃了俺爸俺弟俺侄"
+- 拆字串故事："ambition → am(我)+bit(一点点)+ion → 我有一点点野心"
+- 场景化："develop → 开发(de) 把 envelop(信封) 拆开 → 拆开来发展"
+- 反差 / 对比："eligible(合格) ≠ illegible(难辨认)"
+- 词根扩展时也要加趣味，如 "spect(看): 注意 inspect(往里看 = 检查)"
+
 严格要求：
 - ipa 必须用国际音标符号（重音符 ˈ、长音 ː），不要用 KK 或字母拼音
-- tip 必须简短易记
-- examples 给 2 个例句，**必须来自真实英语语境**：新闻、对话、小说、日常表达。绝对不要造句腔（如 "I am happy" 这种），优先选有动词搭配、定语从句、介词短语等真实结构。例句长度 8-15 词为佳
+- tip 必须有记忆点、有趣或形象，禁止"X + Y = 含义"这种干巴公式
+- examples **必须来自真实英语语境**：新闻、对话、小说、日常表达。绝对不要造句腔（如 "I am happy" 这种），优先选有动词搭配、定语从句、介词短语等真实结构。例句长度 8-15 词为佳
 - 严格保持顺序对应输入`,
       },
     ],
@@ -260,7 +275,93 @@ export async function explainWrongAnswer(question: string, userAnswer: string, c
   );
 }
 
-/* ---------- 词根 / 词缀关联 ---------- */
+/* ---------- 一站式增强：巧记 + 词根 一次生成 ---------- */
+/** 整批单词调用 1 次（或按 batchSize 分批），同时返回巧记 + 词根 + 词族 */
+export async function batchGenerateEnhancement(
+  words: { word: string; translations: string }[],
+  cfg: AIConfig,
+  signal?: AbortSignal
+): Promise<EnhancementItem[]> {
+  if (words.length === 0) return [];
+  const list = words.map((w, i) => `${i + 1}. ${w.word} —— ${w.translations}`).join('\n');
+  const out = await chat(
+    [
+      {
+        role: 'system',
+        content: `你是中文母语者的英语记忆教练 + 词源学家。一次性输出每个单词的：
+①IPA 音标
+②中式梗巧记口诀（谐音/段子/形象化故事，30 字内，禁止干巴公式）
+③详细记忆方法（1-3 句）
+④2 个真实语境例句
+⑤词根/词缀本体 + 含义 + 5-8 个同根词
+严格输出 JSON 数组，长度与输入完全一致，不要额外文字或代码块标记。`,
+      },
+      {
+        role: 'user',
+        content: `${list}
+
+每项格式：
+{
+  "word": "predict",
+  "ipa": "/prɪˈdɪkt/",
+  "tip": "pre(预先)+dict(说)→预先说出来=预测",
+  "detail": "想象算命先生在你出生前就 pre-dict——预先说出你的命运。",
+  "examples": [
+    { "en": "Economists predict a sharp rise in inflation next quarter.", "zh": "经济学家预测下季度通胀将急剧上升。" },
+    { "en": "It's hard to predict how he'll react.", "zh": "很难预测他会作何反应。" }
+  ],
+  "root": "dict",
+  "rootMeaning": "说、讲",
+  "family": [
+    { "word": "predict", "gloss": "预言、预测" },
+    { "word": "verdict", "gloss": "裁决、定论" },
+    { "word": "contradict", "gloss": "反驳" },
+    { "word": "dictate", "gloss": "口述、命令" },
+    { "word": "dictionary", "gloss": "词典" }
+  ]
+}
+
+要求：
+- tip 必须有中式记忆点（谐音/段子/形象化），禁止"abil+ity=能力"这种公式
+- examples 真实语境，禁造句腔，8-15 词
+- root 只填最核心的一条，若无（外来语/拟声）填 "—" 并 family=[]
+- family 5-8 个，gloss ≤ 8 字中文释义
+- 严格 JSON 数组，与输入顺序一致`,
+      },
+    ],
+    cfg,
+    signal
+  );
+  try {
+    const clean = out.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const arr = JSON.parse(clean);
+    if (!Array.isArray(arr)) throw new Error('not array');
+    return arr.map((x: any) => ({
+      word: String(x.word ?? ''),
+      tip: String(x.tip ?? ''),
+      detail: x.detail ? String(x.detail) : undefined,
+      ipa: x.ipa ? String(x.ipa) : undefined,
+      examples: Array.isArray(x.examples)
+        ? x.examples
+            .map((e: any) => ({ en: String(e?.en ?? ''), zh: String(e?.zh ?? '') }))
+            .filter((e: { en: string; zh: string }) => e.en && e.zh)
+            .slice(0, 3)
+        : undefined,
+      root: x.root ? String(x.root) : undefined,
+      rootMeaning: x.rootMeaning ? String(x.rootMeaning) : undefined,
+      family: Array.isArray(x.family)
+        ? x.family
+            .map((f: any) => ({ word: String(f?.word ?? ''), gloss: String(f?.gloss ?? '') }))
+            .filter((f: { word: string }) => f.word)
+            .slice(0, 8)
+        : [],
+    })).filter((x: EnhancementItem) => x.word && x.tip);
+  } catch {
+    throw new AIError('AI 返回内容无法解析为增强数组，请重试或换个模型');
+  }
+}
+
+/* ---------- 词根 / 词缀关联（单词维度，保留用于 Library 单查） ---------- */
 export interface WordRootResult {
   root: string;
   meaning: string;

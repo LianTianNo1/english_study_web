@@ -1,9 +1,20 @@
 import { db } from '@/db/schema';
-import type { ProgressRecord, SessionRecord, GrammarProgressRecord, SettingsRecord, MnemonicRecord, WordRecord } from '@/db/types';
+import type {
+  ProgressRecord,
+  SessionRecord,
+  GrammarProgressRecord,
+  SettingsRecord,
+  MnemonicRecord,
+  WordRecord,
+  WordRootRecord,
+  UserSentenceRecord,
+} from '@/db/types';
 
-/** 备份默认只含"用户学习成果"——可选包含词库本体（用于换设备时跳过 5 分钟导入） */
+/** 备份默认只含"用户学习成果"——可选包含词库本体（用于换设备时跳过 5 分钟导入）
+ *  version 字段保留为 1 以向前兼容；新增字段通过 schemaVersion 区分 */
 export interface BackupV1 {
   version: 1;
+  schemaVersion?: number;       // 当前 4：含 wordRoots + userSentences
   exportedAt: string;
   appVersion: string;
   progress: ProgressRecord[];
@@ -11,10 +22,13 @@ export interface BackupV1 {
   grammarProgress: GrammarProgressRecord[];
   settings: SettingsRecord[];
   mnemonics?: MnemonicRecord[];
-  words?: WordRecord[];        // v0.4+ 可选含词库
+  words?: WordRecord[];          // v0.4+ 可选含词库
+  wordRoots?: WordRootRecord[];  // v0.5+ AI 词根缓存
+  userSentences?: UserSentenceRecord[]; // v0.5+ 用户造句记录
 }
 
-const APP_VERSION = '0.4.0';
+const APP_VERSION = '0.5.0';
+const SCHEMA_VERSION = 4;
 
 /* ---------- 敏感字段脱敏 ---------- */
 function sanitizeSettings(settings: SettingsRecord[], includeAIConfig: boolean): SettingsRecord[] {
@@ -39,16 +53,19 @@ export interface ExportOptions {
 
 export async function buildBackup(opts: ExportOptions = {}): Promise<BackupV1> {
   const { includeSettings = true, includeSessions = true, includeWords = false, includeAIConfig = false } = opts;
-  const [progress, sessions, grammarProgress, settings, mnemonics, words] = await Promise.all([
+  const [progress, sessions, grammarProgress, settings, mnemonics, wordRoots, userSentences, words] = await Promise.all([
     db.progress.toArray(),
     includeSessions ? db.sessions.toArray() : Promise.resolve([]),
     db.grammarProgress.toArray(),
     includeSettings ? db.settings.toArray() : Promise.resolve([]),
     db.mnemonics.toArray(),
+    db.wordRoots.toArray(),
+    includeSessions ? db.userSentences.toArray() : Promise.resolve([]),
     includeWords ? db.words.toArray() : Promise.resolve(undefined),
   ]);
   return {
     version: 1,
+    schemaVersion: SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     appVersion: APP_VERSION,
     progress,
@@ -56,6 +73,8 @@ export async function buildBackup(opts: ExportOptions = {}): Promise<BackupV1> {
     grammarProgress,
     settings: sanitizeSettings(settings, includeAIConfig),
     mnemonics,
+    wordRoots,
+    userSentences,
     ...(words ? { words } : {}),
   };
 }
@@ -88,6 +107,8 @@ export interface ImportReport {
   grammarProgress: number;
   settings: number;
   mnemonics: number;
+  wordRoots: number;
+  userSentences: number;
   words: number;
   skippedSettings: string[];
 }
@@ -125,16 +146,20 @@ export async function applyBackup(backup: BackupV1, optsOrStrategy: ImportOption
     grammarProgress: 0,
     settings: 0,
     mnemonics: 0,
+    wordRoots: 0,
+    userSentences: 0,
     words: 0,
     skippedSettings: [],
   };
 
-  await db.transaction('rw', [db.progress, db.sessions, db.grammarProgress, db.settings, db.mnemonics, db.words], async () => {
+  await db.transaction('rw', [db.progress, db.sessions, db.grammarProgress, db.settings, db.mnemonics, db.wordRoots, db.userSentences, db.words], async () => {
     if (strategy === 'replace') {
       await db.progress.clear();
       await db.sessions.clear();
       await db.grammarProgress.clear();
       await db.mnemonics.clear();
+      await db.wordRoots.clear();
+      await db.userSentences.clear();
       // 词库只在备份包含 words 时才清空+替换（避免误清空已导入的词库）
       if (backup.words && backup.words.length > 0) {
         await db.words.clear();
@@ -190,6 +215,19 @@ export async function applyBackup(backup: BackupV1, optsOrStrategy: ImportOption
     for (const m of backup.mnemonics ?? []) {
       await db.mnemonics.put(m);
       report.mnemonics++;
+    }
+
+    // wordRoots: 按 wordId 覆盖
+    for (const r of backup.wordRoots ?? []) {
+      await db.wordRoots.put(r);
+      report.wordRoots++;
+    }
+
+    // userSentences: 追加（造句记录无主键去重，全量保留）
+    for (const s of backup.userSentences ?? []) {
+      const { id, ...rest } = s;
+      await db.userSentences.add(rest as UserSentenceRecord);
+      report.userSentences++;
     }
 
     // settings: ai 配置需用户在导入时主动勾选才写入

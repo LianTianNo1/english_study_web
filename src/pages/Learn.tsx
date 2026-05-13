@@ -8,17 +8,18 @@ import { sessionsRepo } from '@/db/repositories/sessions';
 import { initSession, nextQuestion, submitAnswer, skipCurrent, type SessionState } from '@/features/learn-session/session';
 import { QuizCard } from '@/components/QuizCard';
 import { INITIAL_SRS, scheduleNext, nextReviewAtFor } from '@/features/srs';
-import { ArrowRight, Trophy, Volume2, Star, Clock, Lightbulb, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowRight, Trophy, Volume2, Star, Clock, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { speak } from '@/lib/tts';
 import { cn, shuffle } from '@/lib/utils';
 import { mnemonicsRepo } from '@/db/repositories/mnemonics';
-import { batchGenerateMnemonics } from '@/lib/ai';
+import { wordRootsRepo } from '@/db/repositories/wordRoots';
+import { batchGenerateEnhancement } from '@/lib/ai';
 import { MnemonicHint } from '@/components/MnemonicHint';
 import { PronunciationRecorder } from '@/components/PronunciationRecorder';
 import { WordRootsPanel } from '@/components/WordRootsPanel';
 import { MicroReview } from '@/components/MicroReview';
 import { speakTwice } from '@/lib/tts';
-import type { MnemonicRecord } from '@/db/types';
+import type { MnemonicRecord, WordRootRecord } from '@/db/types';
 
 type Stage = 'preview' | 'quiz' | 'micro' | 'done';
 
@@ -85,7 +86,7 @@ export function Learn() {
     mnemonicsRepo.getMany(ids).then(setMnemonics);
   }, [newWords]);
 
-  async function batchAiMnemonics() {
+  async function batchAiEnhancement() {
     if (aiBatching) return;
     if (!ai.enabled || !ai.apiKey) {
       setAiBatchError('请先在设置启用 AI 助手并填入 API Key');
@@ -94,7 +95,7 @@ export function Learn() {
     setAiBatchError('');
     setAiBatching(true);
     try {
-      // 只为还没有缓存的词生成
+      // 只为还没有缓存巧记的词生成（词根缺失但巧记存在的也会一并补齐）
       const todo = newWords.filter((w) => w.id !== undefined && !mnemonics.has(w.id!));
       if (todo.length === 0) {
         setAiBatching(false);
@@ -105,20 +106,20 @@ export function Learn() {
       const accum = new Map(mnemonics);
       for (let i = 0; i < todo.length; i += batchSize) {
         const chunk = todo.slice(i, i + batchSize);
-        const items = await batchGenerateMnemonics(
+        const items = await batchGenerateEnhancement(
           chunk.map((w) => ({
             word: w.word,
             translations: w.translations.map((t) => t.translation).join('；'),
           })),
           ai
         );
-        // 按顺序匹配（AI 已被指示保持顺序）
         const now = Date.now();
-        const recs: MnemonicRecord[] = [];
+        const mnemoRecs: MnemonicRecord[] = [];
+        const rootRecs: WordRootRecord[] = [];
         chunk.forEach((w, idx) => {
           const m = items[idx];
           if (!m || !w.id) return;
-          const rec: MnemonicRecord = {
+          mnemoRecs.push({
             wordId: w.id,
             word: w.word,
             tip: m.tip,
@@ -127,11 +128,23 @@ export function Learn() {
             examples: m.examples,
             createdAt: now,
             model: ai.model,
-          };
-          recs.push(rec);
-          accum.set(w.id, rec);
+          });
+          accum.set(w.id, mnemoRecs[mnemoRecs.length - 1]);
+          // 同时写入词根表（root="—" 或 family 为空也保存，避免下次重复请求）
+          if (m.root !== undefined) {
+            rootRecs.push({
+              wordId: w.id,
+              word: w.word,
+              root: m.root || '—',
+              meaning: m.rootMeaning ?? '',
+              family: m.family ?? [],
+              createdAt: now,
+              model: ai.model,
+            });
+          }
         });
-        await mnemonicsRepo.putMany(recs);
+        await mnemonicsRepo.putMany(mnemoRecs);
+        for (const r of rootRecs) await wordRootsRepo.put(r);
         setMnemonics(new Map(accum));
         setAiBatchProgress({ done: Math.min(i + batchSize, todo.length), total: todo.length });
       }
@@ -296,51 +309,58 @@ export function Learn() {
         <Header chapter="01" en="Acquire" zh="新词预览" />
         <ProgressLine label={learnOrder === 'random' ? 'shuffle mode' : 'sequential'} sub={`${LEVELS.find((l) => l.id === activeLevel)?.name}`} pct={pct} index={previewIdx + 1} total={newWords.length} />
 
-        {/* AI 巧记批量条 */}
+        {/* AI 一键增强：巧记 + 音标 + 例句 + 词根族（一次 API 调用） */}
         <div className={cn(
-          'flex items-center gap-3 rounded-md border p-3',
+          'flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center',
           aiCoveredCount === newWords.length && aiCoveredCount > 0
             ? 'border-moss/30 bg-moss-50/40'
             : 'border-persimmon/30 bg-persimmon-50/30'
         )}>
-          <div className={cn(
-            'grid h-10 w-10 shrink-0 place-items-center rounded-md',
-            aiCoveredCount === newWords.length && aiCoveredCount > 0
-              ? 'bg-moss text-paper'
-              : 'bg-persimmon text-paper'
-          )}>
-            <Lightbulb size={18} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-display text-sm font-bold text-ink">
-              {aiCoveredCount === 0 ? 'AI 巧记预学' : aiCoveredCount === newWords.length ? '巧记已就绪 ✓' : `已生成 ${aiCoveredCount} / ${newWords.length}`}
+          <div className="flex flex-1 items-center gap-3 min-w-0">
+            <div className={cn(
+              'grid h-10 w-10 shrink-0 place-items-center rounded-md',
+              aiCoveredCount === newWords.length && aiCoveredCount > 0
+                ? 'bg-moss text-paper'
+                : 'bg-persimmon text-paper'
+            )}>
+              <Sparkles size={18} />
             </div>
-            <div className="mt-0.5 text-xs text-ink3">
-              {aiCoveredCount === 0
-                ? '为本组单词批量生成口诀和记忆方法，练习时可悬浮提示'
-                : aiCoveredCount === newWords.length
-                ? '练习时每张卡的右上角 💡 按钮即可唤出'
-                : aiBatching
-                ? `正在生成 ${aiBatchProgress.done}/${aiBatchProgress.total}…`
-                : '点击右侧"补齐"为剩余单词生成'}
-            </div>
-            {aiBatching && (
-              <div className="mt-2 meter-track !h-1">
-                <div
-                  className="meter-bar bg-persimmon"
-                  style={{ width: `${aiBatchProgress.total === 0 ? 0 : (aiBatchProgress.done / aiBatchProgress.total) * 100}%` }}
-                />
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="font-display text-sm font-bold text-ink">
+                  {aiCoveredCount === 0 ? 'AI 一键增强' : aiCoveredCount === newWords.length ? '增强已就绪 ✓' : `已生成 ${aiCoveredCount} / ${newWords.length}`}
+                </span>
+                <span className="font-mono text-[9px] uppercase tracking-wider text-ink3">
+                  中式梗巧记 · IPA · 真实例句 · 词根族
+                </span>
               </div>
-            )}
+              <div className="mt-0.5 text-xs text-ink3 leading-relaxed">
+                {aiCoveredCount === 0
+                  ? '一次 API 调用批量生成中式记忆口诀（谐音/段子/故事）、音标、真实例句与同根词族。永久缓存。'
+                  : aiCoveredCount === newWords.length
+                  ? '所有词卡已就绪，练习时 💡 唤出，词根族在 word roots 面板查看'
+                  : aiBatching
+                  ? `正在生成 ${aiBatchProgress.done}/${aiBatchProgress.total}…`
+                  : '点击右侧"补齐"为剩余单词生成'}
+              </div>
+              {aiBatching && (
+                <div className="mt-2 meter-track !h-1">
+                  <div
+                    className="meter-bar bg-persimmon"
+                    style={{ width: `${aiBatchProgress.total === 0 ? 0 : (aiBatchProgress.done / aiBatchProgress.total) * 100}%` }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           {aiCoveredCount < newWords.length && (
             <button
-              onClick={batchAiMnemonics}
+              onClick={batchAiEnhancement}
               disabled={aiBatching || !aiAvailable}
-              className="btn-accent shrink-0"
+              className="btn-accent w-full justify-center sm:w-auto sm:shrink-0"
               title={!aiAvailable ? '请先在设置启用 AI' : undefined}
             >
-              {aiBatching ? <><Loader2 size={14} className="animate-spin" /> 生成中</> : aiCoveredCount === 0 ? <><Lightbulb size={14} /> 一键生成</> : <>补齐 {newWords.length - aiCoveredCount}</>}
+              {aiBatching ? <><Loader2 size={14} className="animate-spin" /> 生成中</> : aiCoveredCount === 0 ? <><Sparkles size={14} /> 一键增强</> : <>补齐 {newWords.length - aiCoveredCount}</>}
             </button>
           )}
         </div>
@@ -414,7 +434,8 @@ export function Learn() {
           )}
           {isEnhanced && enhanced.showWordRoots && (
             <div className="mt-4">
-              <WordRootsPanel word={w} />
+              {/* readOnly：词根由顶部"一键增强"统一生成；这里只在已有缓存时展示 */}
+              <WordRootsPanel word={w} readOnly />
             </div>
           )}
         </div>
