@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- maskable 需要把核心内容放在中心 80% 安全区内（Android 会做圆形/圆角裁切） -->
+  <rect width="512" height="512" fill="#1A1614"/>
+  <!-- safe zone 中心化的 E -->
+  <text x="256" y="340" font-family="Fraunces,Georgia,serif" font-size="240" font-weight="900" text-anchor="middle" fill="#D9501F">E</text>
+</svg>
