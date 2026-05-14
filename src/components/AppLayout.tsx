@@ -9,6 +9,7 @@ import { warmUpTTS } from '@/lib/tts';
 import { startNotificationLoop, stopNotificationLoop } from '@/lib/notifications';
 import { MobileSheet } from './MobileSheet';
 import { ShortcutsPanel } from './ShortcutsPanel';
+import { GistAutoPullDialog } from './GistAutoPullDialog';
 import { useGistUrlParams } from '@/hooks/useGistUrlParams';
 
 const NAV = [
@@ -39,7 +40,7 @@ export function AppLayout() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [desktopMoreOpen, setDesktopMoreOpen] = useState(false);
-  const { conflict, resolveConflict } = useGistUrlParams();
+  const { conflict, resolveConflict, pendingPrompt, dismissPrompt } = useGistUrlParams();
   const load = useSettings((s) => s.load);
   const sfxEnabled = useSettings((s) => s.sfxEnabled);
   const enhanced = useSettings((s) => s.enhanced);
@@ -47,11 +48,17 @@ export function AppLayout() {
 
   useEffect(() => {
     (async () => {
-      const has = await isAnyImported();
-      if (!has) navigate('/onboarding', { replace: true });
       await load();
+      const has = await isAnyImported();
+      // 关键：当 URL 自带 gist 同步配置时，跳过 onboarding 重定向，
+      //       让用户先看到"自动同步"对话框 —— 拉取完毕后由对话框自己决定是否进 onboarding。
+      if (!has && !pendingPrompt) {
+        navigate('/onboarding', { replace: true });
+      }
       setReady(true);
     })();
+    // pendingPrompt 仅在首次加载读取一次，加入依赖反而会造成无谓的重新执行
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, load]);
 
   // 路由切换自动关抽屉与桌面下拉
@@ -334,6 +341,16 @@ export function AppLayout() {
 
       {/* ============ 快捷键面板（全局 ?） ============ */}
       <ShortcutsPanel open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      {/* ============ URL Gist 自动同步对话框 ============
+        访问 ?gistId=&githubToken= 链接时弹出。跳过 onboarding 让用户直接选拉取策略。 */}
+      {pendingPrompt && (
+        <GistAutoPullDialog
+          gistId={pendingPrompt.gistId}
+          token={pendingPrompt.token}
+          onClose={dismissPrompt}
+        />
+      )}
 
       {/* ============ Gist 凭据冲突弹窗 ============ */}
       <MobileSheet
