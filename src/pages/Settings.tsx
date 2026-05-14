@@ -631,6 +631,33 @@ export function Settings() {
           </button>
         </Field>
 
+        <Field label="硬重置 PWA 缓存" hint="清 Service Worker 与离线缓存——遇到「装好后启动 404」时按这个">
+          <button
+            onClick={async () => {
+              if (!confirm('将注销当前 Service Worker 并清空所有离线缓存，本地学习数据保留。\n继续？')) return;
+              try {
+                // 注销所有 SW
+                if ('serviceWorker' in navigator) {
+                  const regs = await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(regs.map((r) => r.unregister()));
+                }
+                // 清所有 caches API 缓存
+                if ('caches' in window) {
+                  const keys = await caches.keys();
+                  await Promise.all(keys.map((k) => caches.delete(k)));
+                }
+                alert('已清除 SW 与离线缓存。\n现在请：\n1) 关闭这个标签页\n2) 如果之前安装过 PWA 到桌面，请卸载它\n3) 重新打开网站并重新安装');
+                location.reload();
+              } catch (e) {
+                alert('清除失败：' + (e as Error).message);
+              }
+            }}
+            className="btn border border-persimmon text-persimmon hover:bg-persimmon-50"
+          >
+            <RefreshCw size={14} /> 注销 SW + 清离线缓存
+          </button>
+        </Field>
+
         <p className="font-mono text-[10px] uppercase tracking-wider text-ink3">
           data lives in indexeddb · clearing site data will erase progress
         </p>

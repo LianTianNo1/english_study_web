@@ -1,0 +1,34 @@
+<!doctype html>
+<!--
+  GitHub Pages SPA 404 兜底：当用户访问 /<repo>/anything 服务器找不到时，
+  GitHub Pages 会返回这个文件。这里把当前路径搬到 sessionStorage 后跳回 index，
+  index.html 加载完毕的 main.tsx 再读 sessionStorage 还原路由。
+  对 HashRouter 项目来说，主要解决"用户输错路径"或"PWA 卸载后再装的过渡 URL"。
+-->
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>English Hub — Redirecting…</title>
+    <script>
+      (function () {
+        // 计算项目 base：username.github.io/english/ → "/english/"
+        var path = window.location.pathname;
+        var firstSeg = path.split('/').filter(Boolean)[0] || '';
+        var base = firstSeg ? '/' + firstSeg + '/' : '/';
+        // 保留尝试的子路径，让 SPA 还原（HashRouter 项目通常不需要，但兼容外链）
+        try { sessionStorage.setItem('pwa-redirect', path + window.location.search + window.location.hash); } catch (_) {}
+        window.location.replace(base);
+      })();
+    </script>
+    <meta http-equiv="refresh" content="0; url=/" />
+  </head>
+  <body>
+    <p>Redirecting to <a id="lnk" href="/">home</a>…</p>
+    <script>
+      // 给 noscript 兜底用：保险地把链接也指向项目根
+      var path = window.location.pathname;
+      var firstSeg = path.split('/').filter(Boolean)[0] || '';
+      document.getElementById('lnk').href = firstSeg ? '/' + firstSeg + '/' : '/';
+    </script>
+  </body>
+</html>
