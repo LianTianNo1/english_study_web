@@ -75,6 +75,7 @@ export function GistAutoPullDialog({ gistId, token, onClose }: Props) {
 
   // ============ 拉取成功页 ============
   if (report) {
+    const needsWordbook = report.words === 0; // 备份不含词库（默认情况）
     return (
       <Backdrop>
         <Sheet>
@@ -82,21 +83,23 @@ export function GistAutoPullDialog({ gistId, token, onClose }: Props) {
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-moss-50">
               <Check size={26} className="text-moss" />
             </div>
-            <h2 className="mt-4 font-display text-2xl font-black tracking-tight">同步完成</h2>
+            <h2 className="mt-4 font-display text-2xl font-black tracking-tight">配置已同步</h2>
             <p className="mt-2 text-sm text-ink2">
-              从 Gist 还原了你的学习数据，可以直接接着学。
+              {needsWordbook
+                ? '进度 / 设置 / AI 巧记 全部还原。还差最后一步——下载词库到本设备。'
+                : '从 Gist 还原了完整学习数据，可以直接接着学。'}
             </p>
           </div>
 
           <ul className="mt-5 grid grid-cols-2 gap-2 text-xs">
             <Stat label="学习进度" v={report.progress} />
-            <Stat label="错题/星标" v={report.progress} hide />
             <Stat label="语法关卡" v={report.grammarProgress} />
             <Stat label="AI 巧记" v={report.mnemonics} />
             {report.wordRoots > 0 && <Stat label="词根关联" v={report.wordRoots} />}
             {report.userSentences > 0 && <Stat label="主动造句" v={report.userSentences} />}
             <Stat label="会话记录" v={report.sessions} />
             <Stat label="设置偏好" v={report.settings} />
+            {report.words > 0 && <Stat label="词条" v={report.words} />}
           </ul>
 
           {report.skippedSettings.length > 0 && (
@@ -105,8 +108,15 @@ export function GistAutoPullDialog({ gistId, token, onClose }: Props) {
             </p>
           )}
 
+          {needsWordbook && (
+            <div className="mt-4 rounded-md border border-persimmon/40 bg-persimmon-50/40 p-3 text-xs text-persimmon-700">
+              <b>下一步</b>：Gist 备份默认不含词库本体（30MB+），点击下方按钮去选择 / 下载词库 JSON 到本地。
+              下载完毕你刚同步过来的进度会自动接上。
+            </div>
+          )}
+
           <button onClick={finishAndExit} className="btn-accent mt-6 w-full justify-center">
-            开始学习 →
+            {needsWordbook ? '前往下载词库 →' : '开始学习 →'}
           </button>
         </Sheet>
       </Backdrop>
