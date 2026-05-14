@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Keyboard, Menu } from 'lucide-react';
+import { ChevronDown, Keyboard, Menu } from 'lucide-react';
 import { isAnyImported } from '@/db/importer';
 import { useSettings } from '@/stores/settingsStore';
 import { cn } from '@/lib/utils';
@@ -28,12 +28,17 @@ const NAV = [
 const MOBILE_TABS = NAV.slice(0, 4);              // 今日 / 新词 / 复习 / 听写
 const MOBILE_MORE = NAV.slice(4);                  // 错题 / 语法 / 词库 / 统计 / 周报 / 设置
 
+// 桌面端：6 项常驻主导航 + 4 项「更多 ▾」下拉，避免换行
+const DESKTOP_PRIMARY = NAV.slice(0, 6);          // 今日 / 新词 / 复习 / 听写 / 错题 / 语法
+const DESKTOP_SECONDARY = NAV.slice(6);            // 词库 / 统计 / 周报 / 设置
+
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [ready, setReady] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [desktopMoreOpen, setDesktopMoreOpen] = useState(false);
   const { conflict, resolveConflict } = useGistUrlParams();
   const load = useSettings((s) => s.load);
   const sfxEnabled = useSettings((s) => s.sfxEnabled);
@@ -49,8 +54,24 @@ export function AppLayout() {
     })();
   }, [navigate, load]);
 
-  // 路由切换自动关抽屉
-  useEffect(() => { setMoreOpen(false); }, [location.pathname]);
+  // 路由切换自动关抽屉与桌面下拉
+  useEffect(() => { setMoreOpen(false); setDesktopMoreOpen(false); }, [location.pathname]);
+
+  // 点击外部 / Esc 关闭桌面下拉
+  useEffect(() => {
+    if (!desktopMoreOpen) return;
+    function onDoc(e: MouseEvent) {
+      const t = e.target as HTMLElement | null;
+      if (!t?.closest('[data-more-dropdown]')) setDesktopMoreOpen(false);
+    }
+    function onEsc(e: KeyboardEvent) { if (e.key === 'Escape') setDesktopMoreOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [desktopMoreOpen]);
 
   // 同步音效开关到底层模块
   useEffect(() => {
@@ -107,42 +128,97 @@ export function AppLayout() {
 
   // 当前路径是否归属"更多"
   const moreActive = MOBILE_MORE.some((n) => location.pathname.startsWith(n.to));
+  // 桌面"更多"下拉的激活态：当前路径属于 secondary 项
+  const desktopMoreActive = DESKTOP_SECONDARY.some((n) => location.pathname.startsWith(n.to));
 
   return (
     <div className="min-h-full">
       {/* ============ Header ============ */}
       <header className="sticky top-0 z-30 border-b border-paper3 bg-paper/85 backdrop-blur">
         {/* 桌面 header */}
-        <div className="mx-auto hidden max-w-6xl items-center justify-between gap-6 px-6 py-4 md:flex">
-          <div className="flex items-baseline gap-3">
+        <div className="mx-auto hidden max-w-6xl items-center gap-4 px-6 py-4 md:flex">
+          {/* Logo —— 副标语仅在 xl 屏显示，给 nav 让出空间 */}
+          <div className="flex items-baseline gap-3 shrink-0">
             <span className="font-display text-2xl font-black tracking-tight text-ink">English Hub</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink3">
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.3em] text-ink3 xl:inline">
               — Private Study Journal
             </span>
           </div>
-          <nav className="flex items-center gap-1">
-            {NAV.map((n) => (
+
+          {/* 主导航：6 项常驻 + "更多 ▾" 下拉。code prefix 在 lg+ 才显示 */}
+          <nav className="ml-auto flex items-center gap-0.5">
+            {DESKTOP_PRIMARY.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
                 end={n.end}
                 className={({ isActive }) =>
                   cn(
-                    'group relative flex items-baseline gap-1 px-2.5 py-2 text-sm transition-colors',
+                    'group relative flex items-baseline gap-1 rounded-sm px-2.5 py-1.5 text-sm transition-colors',
                     isActive ? 'text-ink' : 'text-ink3 hover:text-ink'
                   )
                 }
               >
-                <span className="font-mono text-[9px] tracking-wider opacity-50 group-hover:opacity-100">{n.code}</span>
+                <span className="hidden font-mono text-[9px] tracking-wider opacity-50 group-hover:opacity-100 lg:inline">{n.code}</span>
                 <span className="font-medium">{n.label}</span>
                 <NavIndicator path={n.to} end={!!n.end} current={location.pathname} />
               </NavLink>
             ))}
+
+            {/* 更多 ▾ */}
+            <div className="relative" data-more-dropdown>
+              <button
+                onClick={() => setDesktopMoreOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={desktopMoreOpen}
+                className={cn(
+                  'group relative flex items-center gap-1 rounded-sm px-2.5 py-1.5 text-sm transition-colors',
+                  desktopMoreActive ? 'text-ink' : 'text-ink3 hover:text-ink'
+                )}
+              >
+                <span className="font-medium">更多</span>
+                <ChevronDown size={12} className={cn('transition-transform', desktopMoreOpen && 'rotate-180')} />
+                {desktopMoreActive && <span className="absolute -bottom-0.5 left-2 right-5 h-0.5 bg-persimmon" />}
+              </button>
+              {desktopMoreOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-40 mt-1.5 w-48 origin-top-right overflow-hidden rounded-md border border-paper3 bg-paper shadow-paper animate-fade-up"
+                  style={{ animationDuration: '0.18s' }}
+                >
+                  <div className="border-b border-paper3 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.25em] text-ink3">
+                    more · 工具
+                  </div>
+                  <ul>
+                    {DESKTOP_SECONDARY.map((n) => (
+                      <li key={n.to}>
+                        <NavLink
+                          to={n.to}
+                          className={({ isActive }) =>
+                            cn(
+                              'flex items-baseline gap-2.5 px-3 py-2 text-sm transition-colors',
+                              isActive
+                                ? 'bg-persimmon-50/60 text-persimmon-700'
+                                : 'text-ink2 hover:bg-paper2 hover:text-ink'
+                            )
+                          }
+                        >
+                          <span className="font-mono text-[9px] tracking-wider text-ink3 opacity-70">{n.code}</span>
+                          <span className="font-medium">{n.label}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* 快捷键 */}
             <button
               onClick={() => setShortcutsOpen(true)}
               title="快捷键 (?)"
               aria-label="keyboard shortcuts"
-              className="ml-1 inline-grid h-8 w-8 place-items-center rounded-full border border-paper3 bg-paper text-ink3 transition-colors hover:border-ink hover:text-ink"
+              className="ml-1.5 inline-grid h-8 w-8 place-items-center rounded-full border border-paper3 bg-paper text-ink3 transition-colors hover:border-ink hover:text-ink"
             >
               <Keyboard size={14} />
             </button>
