@@ -12,10 +12,10 @@ let cachedVoices: SpeechSynthesisVoice[] = [];
 let warmedUp = false;
 let voicesReadyPromise: Promise<SpeechSynthesisVoice[]> | null = null;
 
-/** Web Speech 可用性运行时探测：null=未知, true=可用, false=已确认坏（直接走降级） */
+/** Tier 1 (Web Speech) 可用性运行时探测：null=未知, true=可用, false=已确认坏 */
 let synthUsable: boolean | null = null;
 
-/** Tier 2 当前播放的 Audio 队列控制（用于 stopSpeaking 取消） */
+/** Tier 2 当前播放控制（用于 stopSpeaking 取消） */
 let activeAudio: HTMLAudioElement | null = null;
 let activeAudioToken = 0;
 
@@ -23,7 +23,8 @@ function hasSynth() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 }
 
-/** 异步取声音列表：处理 Chrome/Edge 首次返回空、Safari 异步加载 */
+// ============== voices 异步加载 ==============
+
 function ensureVoices(): Promise<SpeechSynthesisVoice[]> {
   if (!hasSynth()) return Promise.resolve([]);
   if (voicesReadyPromise) return voicesReadyPromise;
@@ -51,7 +52,6 @@ function ensureVoices(): Promise<SpeechSynthesisVoice[]> {
         clearInterval(timer);
       }
     }, 250);
-    // 兜底：1.5s 后即便仍为空也 resolve（移动端若仍空将触发 Tier2 降级）
     setTimeout(() => {
       clearInterval(timer);
       window.speechSynthesis.removeEventListener('voiceschanged', onChange);
@@ -89,7 +89,6 @@ export function whenVoicesReady(cb: () => void) {
   ensureVoices().then(() => cb());
 }
 
-/** Chrome/Edge bug：长时间不发声后 paused 状态错误，需 resume */
 function unstickSynth() {
   if (!hasSynth()) return;
   try {
@@ -97,13 +96,11 @@ function unstickSynth() {
   } catch { /* noop */ }
 }
 
-/** 用户手势内调用一次，"解锁"移动端合成器 */
 export function warmUpTTS() {
   if (warmedUp) return;
   warmedUp = true;
   if (hasSynth()) {
     try {
-      // 关键：空字符串在 Android 上会被吞，用空格保证真正触发引擎
       const u = new SpeechSynthesisUtterance(' ');
       u.volume = 0;
       window.speechSynthesis.speak(u);
@@ -129,10 +126,47 @@ interface SpeakOptions {
   onEnd?: () => void;
 }
 
-// ============== Tier 2: Google Translate TTS（免 key、免 CORS） ==============
+// ============== Tier 2: 多镜像云端 TTS（国内优先） ==============
+// 顺序按 navigator.language 推断：中文 → 有道优先；其他 → Google 优先
+// 单个 provider 加载失败即标记 dead，自动切下一个；全部 dead → Tier 3
 
-/** 按 ~180 字符切分句子，优先在词/标点边界断开（Google TTS 上限 ~200） */
-function splitForGoogleTTS(text: string, max = 180): string[] {
+interface CloudProvider {
+  name: string;
+  maxChars: number;
+  urlOf: (chunk: string) => string;
+  dead: boolean;
+}
+
+function buildProviders(): CloudProvider[] {
+  const youdao: CloudProvider = {
+    name: 'youdao',
+    maxChars: 600,
+    urlOf: (t) => `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(t)}&type=1`,
+    dead: false,
+  };
+  const google: CloudProvider = {
+    name: 'google',
+    maxChars: 180,
+    urlOf: (t) => `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(t)}&tl=en&client=tw-ob`,
+    dead: false,
+  };
+  const googleApi: CloudProvider = {
+    name: 'googleapis',
+    maxChars: 180,
+    urlOf: (t) => `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(t)}&tl=en&client=gtx`,
+    dead: false,
+  };
+  const lang = typeof navigator !== 'undefined' ? navigator.language || '' : '';
+  return /^zh/i.test(lang) ? [youdao, google, googleApi] : [google, googleApi, youdao];
+}
+
+let providers: CloudProvider[] = buildProviders();
+
+function pickProvider(): CloudProvider | null {
+  return providers.find((p) => !p.dead) ?? null;
+}
+
+function splitForProvider(text: string, max: number): string[] {
   const t = text.trim();
   if (t.length <= max) return [t];
   const out: string[] = [];
@@ -155,13 +189,10 @@ function splitForGoogleTTS(text: string, max = 180): string[] {
   return out;
 }
 
-function googleTTSUrl(chunk: string): string {
-  const q = encodeURIComponent(chunk);
-  return `https://translate.google.com/translate_tts?ie=UTF-8&q=${q}&tl=en&client=tw-ob`;
-}
-
-function speakViaGoogle(text: string, opts: SpeakOptions) {
-  const chunks = splitForGoogleTTS(text);
+function speakViaCloud(text: string, opts: SpeakOptions) {
+  const provider = pickProvider();
+  if (!provider) { fallbackToEspeak(text, opts); return; }
+  const chunks = splitForProvider(text, provider.maxChars);
   if (chunks.length === 0) { opts.onEnd?.(); return; }
   stopActiveAudio();
   const token = ++activeAudioToken;
@@ -170,23 +201,25 @@ function speakViaGoogle(text: string, opts: SpeakOptions) {
 
   let i = 0;
   const playNext = () => {
-    if (token !== activeAudioToken) return; // 已被 stop 或新一次播放覆盖
-    if (i >= chunks.length) {
-      activeAudio = null;
-      opts.onEnd?.();
-      return;
-    }
-    const a = new Audio(googleTTSUrl(chunks[i++]));
+    if (token !== activeAudioToken) return;
+    if (i >= chunks.length) { activeAudio = null; opts.onEnd?.(); return; }
+    const a = new Audio(provider.urlOf(chunks[i++]));
     a.preload = 'auto';
     a.playbackRate = playbackRate;
     a.onended = playNext;
     a.onerror = () => {
-      console.warn('[tts] Google TTS audio error, abort chain');
-      if (token === activeAudioToken) activeAudio = null;
+      if (token !== activeAudioToken) return;
+      console.warn(`[tts] provider "${provider.name}" failed, marking dead`);
+      provider.dead = true;
+      activeAudio = null;
+      // 切换到下一个 provider 重播整段
+      speakViaCloud(text, opts);
     };
     activeAudio = a;
     a.play().catch((err) => {
-      console.warn('[tts] Google TTS play() rejected:', err);
+      console.warn(`[tts] provider "${provider.name}" play rejected:`, err);
+      provider.dead = true;
+      speakViaCloud(text, opts);
     });
   };
   playNext();
@@ -198,6 +231,57 @@ function stopActiveAudio() {
     try { activeAudio.pause(); activeAudio.src = ''; } catch { /* noop */ }
     activeAudio = null;
   }
+}
+
+// ============== Tier 3: meSpeak WASM 离线兜底（~1.7MB lazy load） ==============
+// 需 npm i mespeak。运行时 dynamic import，未安装则优雅放弃并日志提示。
+
+let espeakReady: boolean | null = null; // null=未尝试, true=就绪, false=加载失败
+let espeakModule: any = null;
+
+async function ensureEspeak(): Promise<boolean> {
+  if (espeakReady !== null) return espeakReady;
+  try {
+    // @ts-expect-error — mespeak 无 .d.ts，运行期 Tier 3 兜底才会触发，按 lazy chunk 加载
+    const m: any = await import('mespeak');
+    const mespeak = m.default ?? m;
+    const cfg = (await import('mespeak/src/mespeak_config.json')).default;
+    const voice = (await import('mespeak/voices/en/en-us.json')).default;
+    mespeak.loadConfig(cfg);
+    mespeak.loadVoice(voice);
+    espeakModule = mespeak;
+    espeakReady = true;
+    console.info('[tts] meSpeak (Tier 3 offline) ready');
+    return true;
+  } catch (e) {
+    espeakReady = false;
+    console.warn('[tts] meSpeak unavailable, install with: npm i mespeak', e);
+    return false;
+  }
+}
+
+function speakViaEspeak(text: string, opts: SpeakOptions) {
+  ensureEspeak().then((ok) => {
+    if (!ok) { opts.onEnd?.(); return; }
+    const { tts } = useSettings.getState();
+    const rate = clamp((tts.rate ?? 1) * (opts.rateMultiplier ?? 1), 0.5, 2);
+    try {
+      espeakModule.speak(text, {
+        amplitude: 100,
+        pitch: clamp((tts.pitch ?? 1) * 50, 0, 99),
+        speed: Math.round(175 * rate), // meSpeak 默认 175 wpm
+        callback: () => opts.onEnd?.(),
+      });
+    } catch (e) {
+      console.warn('[tts] meSpeak speak error:', e);
+      opts.onEnd?.();
+    }
+  });
+}
+
+function fallbackToEspeak(text: string, opts: SpeakOptions) {
+  console.info('[tts] all cloud providers dead → Tier 3 (meSpeak offline)');
+  speakViaEspeak(text, opts);
 }
 
 // ============== Tier 1: Web Speech API（含探测 + 自动降级） ==============
@@ -229,28 +313,26 @@ function speakViaSynth(text: string, opts: SpeakOptions): boolean {
     const err = (e as SpeechSynthesisErrorEvent).error;
     if (err && err !== 'interrupted' && err !== 'canceled') {
       console.warn('[tts] synth error:', err);
-      if (!fired) fallbackToGoogle(text, opts);
+      if (!fired) fallbackToCloud(text, opts);
     }
   };
 
-  // 关键：同步调用 speak()，保留手势凭证
   window.speechSynthesis.speak(u);
 
-  // 1.5s 内若 onstart 没触发 → 判定 Web Speech 不可用，降级
   watchdog = window.setTimeout(() => {
     if (!fired) {
       synthUsable = false;
       try { window.speechSynthesis.cancel(); } catch { /* noop */ }
-      fallbackToGoogle(text, opts);
+      fallbackToCloud(text, opts);
     }
   }, 1500);
 
   return true;
 }
 
-function fallbackToGoogle(text: string, opts: SpeakOptions) {
-  console.info('[tts] fallback → Google Translate TTS');
-  speakViaGoogle(text, opts);
+function fallbackToCloud(text: string, opts: SpeakOptions) {
+  console.info('[tts] fallback → Tier 2 cloud TTS');
+  speakViaCloud(text, opts);
 }
 
 // ============== 公共入口 ==============
@@ -258,28 +340,21 @@ function fallbackToGoogle(text: string, opts: SpeakOptions) {
 function speakOnce(text: string, opts: SpeakOptions = {}) {
   if (!text) return;
 
-  // 已确认 Web Speech 不可用：直走 Tier 2
   if (synthUsable === false || !hasSynth()) {
-    speakViaGoogle(text, opts);
+    speakViaCloud(text, opts);
     return;
   }
 
-  // voices 已就绪 → 同步 speak（保留手势链）
   if (refreshVoices().length > 0) {
     speakViaSynth(text, opts);
     return;
   }
 
-  // voices 还没就绪：先尝试同步 speak（部分浏览器允许无 voice 默认朗读），
-  // 同时启动 voices 探测；若 1.5s 仍空 → 强制降级
   const ok = speakViaSynth(text, opts);
-  if (!ok) { speakViaGoogle(text, opts); return; }
+  if (!ok) { speakViaCloud(text, opts); return; }
 
   ensureVoices().then((list) => {
-    if (list.length === 0 && synthUsable !== true) {
-      // 没声音 + 引擎未确认可用：watchdog 会兜底降级
-      synthUsable = false;
-    }
+    if (list.length === 0 && synthUsable !== true) synthUsable = false;
   });
 }
 
@@ -288,13 +363,11 @@ export function speak(text: string) {
   speakOnce(text);
 }
 
-/** 慢速朗读 (60% 速度) */
 export function speakSlow(text: string) {
   warmUpTTS();
   speakOnce(text, { rateMultiplier: 0.6 });
 }
 
-/** 自动二连播：先正常速度，再慢速 */
 export function speakTwice(text: string) {
   warmUpTTS();
   speakOnce(text, {
@@ -302,12 +375,14 @@ export function speakTwice(text: string) {
   });
 }
 
-/** 停止当前朗读（同时停 Tier 1 / Tier 2） */
 export function stopSpeaking() {
   if (hasSynth()) {
     try { window.speechSynthesis.cancel(); } catch { /* noop */ }
   }
   stopActiveAudio();
+  if (espeakModule) {
+    try { espeakModule.stop?.(); } catch { /* noop */ }
+  }
 }
 
 function clamp(n: number, min: number, max: number) {

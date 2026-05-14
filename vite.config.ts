@@ -44,7 +44,9 @@ export default defineConfig({
       workbox: {
         // 精确控制 precache：只缓存 app shell；词库走 runtimeCaching CacheFirst（按需下载）
         globPatterns: ['**/*.{js,css,html,svg,woff2,ico}'],
-        globIgnores: ['**/data/**', '**/node_modules/**'],
+        // vendor-mespeak (1.8MB) 是 Tier 3 离线 TTS 兜底，绝大多数用户用不到；
+        // 不进 precache，需要时再走运行时 fetch（SW 会自然缓存）
+        globIgnores: ['**/data/**', '**/node_modules/**', '**/vendor-mespeak-*.js'],
         // 单文件上限保守值（app shell 文件都很小）
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
@@ -109,6 +111,9 @@ export default defineConfig({
             if (id.includes('dexie')) return 'vendor-dexie';
             if (id.includes('lucide-react')) return 'vendor-icons';
             if (id.includes('@tanstack')) return 'vendor-virtual';
+            // mespeak (~1.6MB) 是 Tier 3 离线 TTS 兜底，仅在云端 TTS 全部失败时按需加载；
+            // 必须独立成 chunk，否则 asm.js 引擎被静态串到 index 主入口
+            if (id.includes('mespeak')) return 'vendor-mespeak';
             return 'vendor';
           }
           // 把语法题库内容（GRAMMAR_LESSONS 几百 KB）拆开

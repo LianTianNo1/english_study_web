@@ -5,7 +5,11 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(not exist *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(npm i *)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm exec *)",
+      "Bash(pnpm build *)"
     ]
   }
 }
