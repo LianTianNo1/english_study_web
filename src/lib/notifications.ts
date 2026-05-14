@@ -37,11 +37,13 @@ interface NotifyPayload {
 
 async function fire(p: NotifyPayload) {
   if (!hasNotificationSupport() || Notification.permission !== 'granted') return;
+  // BASE_URL 由 Vite 注入：根部署 = "/"，子路径部署 = "/<repo>/"
+  const base = import.meta.env.BASE_URL || '/';
   try {
     new Notification(p.title, {
       body: p.body,
-      icon: '/icon.svg',
-      badge: '/favicon.svg',
+      icon: `${base}icon.svg`,
+      badge: `${base}favicon.svg`,
       tag: p.tag,
       lang: 'zh-CN',
     });

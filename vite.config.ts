@@ -6,14 +6,19 @@ import path from 'node:path';
 // base 由环境变量决定，便于不同部署目标：
 // - 本地 / Netlify / 自托管根路径：留空 → "/"
 // - GitHub Pages 项目站点 (username.github.io/repo)：VITE_BASE_PATH=/repo/
+const BASE = process.env.VITE_BASE_PATH || '/';
+
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH || '/',
+  base: BASE,
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: ['favicon.svg', 'icon.svg', 'icon-maskable.svg'],
+      // 关键：让 SW 注册路径与 scope 与 base 一致（子路径部署不再 404）
+      base: BASE,
+      scope: BASE,
       manifest: {
         name: 'English Hub · 私人学习日志',
         short_name: 'English Hub',
@@ -22,11 +27,15 @@ export default defineConfig({
         background_color: '#FBF7F0',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/',
-        start_url: '/',
+        // scope / start_url 必须与实际部署 base 一致；
+        // 否则手机端安装后启动跳到错误的根路径，GitHub Pages 直接 404。
+        scope: BASE,
+        start_url: BASE,
+        id: BASE,
         lang: 'zh-CN',
         categories: ['education', 'productivity', 'books'],
         icons: [
+          // src 用相对路径，浏览器会自动相对于 manifest 文件位置解析 → 子路径部署也对
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: 'icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
           { src: 'favicon.svg', sizes: '64x64 128x128 256x256', type: 'image/svg+xml', purpose: 'any' },
@@ -66,9 +75,10 @@ export default defineConfig({
             },
           },
         ],
-        navigateFallback: 'index.html',
+        // navigateFallback 必须带 base，否则 SPA hash 路由刷新时找不到 index.html
+        navigateFallback: `${BASE}index.html`,
         // AI 接口绝不走 SW 缓存：用户期望调用就是新的请求
-        navigateFallbackDenylist: [/^\/api/, /openai\.com/, /googleapis\.com\/.*generative/],
+        navigateFallbackDenylist: [/\/api\//, /openai\.com/, /googleapis\.com\/.*generative/],
       },
       devOptions: {
         // 本地开发也启用 SW，便于调试
