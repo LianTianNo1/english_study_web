@@ -30,14 +30,44 @@ export interface BackupV1 {
 const APP_VERSION = '0.5.0';
 const SCHEMA_VERSION = 4;
 
-/* ---------- 敏感字段脱敏 ---------- */
+/* ---------- 敏感字段脱敏 ----------
+ * 关键：备份会被推送到 Gist (云端) ——
+ *   - AI apiKey 出现在 gist 内容里会被 GitHub Secret Scanning 主动撤销
+ *   - GitHub PAT 出现在 gist 内容里同样被自动撤销（"第二次推送 401"的真正根因）
+ *   - Gist ID 本身也属于敏感链路信息：被他人拿到可以推断同步路径
+ * 所以无论用户怎么勾选，gist 的 token / gistId 永远不进备份内容。
+ */
 function sanitizeSettings(settings: SettingsRecord[], includeAIConfig: boolean): SettingsRecord[] {
   return settings.map((s) => {
-    if (s.key !== 'ai') return s;
-    if (includeAIConfig) return s; // 用户主动选择含 AI 配置时保留完整 apiKey
-    if (s.value && typeof s.value === 'object') {
-      const v = s.value as Record<string, unknown>;
-      return { key: s.key, value: { ...v, apiKey: '' } };
+    // AI: 默认脱敏，用户勾选时保留
+    if (s.key === 'ai') {
+      if (includeAIConfig) return s;
+      if (s.value && typeof s.value === 'object') {
+        const v = s.value as Record<string, unknown>;
+        return { key: s.key, value: { ...v, apiKey: '' } };
+      }
+      return s;
+    }
+    // Gist: 永久脱敏 —— token + gistId + 同步元信息都不进备份
+    // 一旦 PAT 出现在 gist 内容中，GitHub 会自动 revoke，导致第二次 PATCH 失败
+    if (s.key === 'gist') {
+      if (s.value && typeof s.value === 'object') {
+        const v = s.value as Record<string, unknown>;
+        return {
+          key: s.key,
+          value: {
+            // 只保留无敏感性的偏好字段
+            autoSync: v.autoSync ?? false,
+            includeAIConfig: v.includeAIConfig ?? false,
+            // 强制清空敏感字段
+            gistId: '',
+            token: '',
+            // 同步状态/时间也属于状态信息，不跨设备/不写云
+            lastSyncedAt: undefined,
+            lastSyncStatus: undefined,
+          },
+        };
+      }
     }
     return s;
   });
@@ -230,7 +260,8 @@ export async function applyBackup(backup: BackupV1, optsOrStrategy: ImportOption
       report.userSentences++;
     }
 
-    // settings: ai 配置需用户在导入时主动勾选才写入
+    // settings: ai 配置需用户在导入时主动勾选才写入；
+    //          gist 永远跳过 —— token/gistId 属于设备本地凭据，不应跨设备同步
     for (const s of backup.settings ?? []) {
       if (s.key === 'ai') {
         if (!applyAIConfig) {
@@ -245,6 +276,11 @@ export async function applyBackup(backup: BackupV1, optsOrStrategy: ImportOption
             continue;
           }
         }
+      }
+      if (s.key === 'gist') {
+        // 防御性跳过 —— 即使旧备份意外含 token，也绝不导入，避免敏感凭据扩散
+        report.skippedSettings.push('gist (敏感字段，不导入)');
+        continue;
       }
       await db.settings.put(s);
       report.settings++;
