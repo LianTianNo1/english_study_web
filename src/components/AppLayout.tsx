@@ -19,6 +19,7 @@ const NAV = [
   { to: '/listening', label: '听写', code: '02d' },
   { to: '/mistakes', label: '错题', code: '2b' },
   { to: '/grammar', label: '语法', code: '03' },
+  { to: '/phonics', label: '音标', code: '03p' },
   { to: '/library', label: '词库', code: '04' },
   { to: '/stats', label: '统计', code: '05' },
   { to: '/weekly', label: '周报', code: '07' },
