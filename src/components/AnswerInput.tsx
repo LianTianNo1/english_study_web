@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, shuffle } from '@/lib/utils';
 import { diffChars } from '@/lib/diff';
 import { sfxChime, sfxThud, sfxTick } from '@/lib/sfx';
 
@@ -240,9 +240,17 @@ function CellsMode({ answer, onSubmit, revealed, onContinue, hint, autoFocus = t
 
 function FreeMode({ answer, onSubmit, revealed, onContinue, hint, placeholder, autoFocus = true }: AnswerInputProps) {
   const [text, setText] = useState('');
+  const [hintsOpen, setHintsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const sparkRef = useRef<HTMLDivElement>(null);
   const padRef = useRef<HTMLDivElement>(null);
+
+  // 从答案中提取唯一单词，打乱顺序作为拼写参考
+  const wordHints = useMemo(() => {
+    const words = answer.match(/[a-zA-Z']+/g) ?? [];
+    const unique = [...new Set(words.map((w) => w.toLowerCase()))];
+    return shuffle(unique);
+  }, [answer]);
 
   useEffect(() => {
     setText('');
@@ -298,6 +306,14 @@ function FreeMode({ answer, onSubmit, revealed, onContinue, hint, placeholder, a
     }
     setText(val);
   };
+
+  // 把词块追加到输入末尾
+  function appendWord(word: string) {
+    if (revealed) return;
+    const newVal = text ? (text.endsWith(' ') ? text + word : text + ' ' + word) : word;
+    handleChange(newVal);
+    inputRef.current?.focus();
+  }
 
   function submit() {
     if (revealed) {
@@ -364,6 +380,49 @@ function FreeMode({ answer, onSubmit, revealed, onContinue, hint, placeholder, a
         />
         {revealed && revealed.correct && <div className="stamp" style={{ top: '-1.5rem' }}>APPROVED</div>}
       </div>
+
+      {/* 单词拼写参考：未揭晓时可展开 */}
+      {!revealed && wordHints.length > 1 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setHintsOpen((v) => !v)}
+            className="mx-auto flex items-center gap-1.5 rounded-full border border-paper3 bg-paper px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink3 transition-colors hover:border-persimmon/50 hover:text-persimmon-700 active:scale-95"
+          >
+            <span>{hintsOpen ? '收起' : '单词参考'}</span>
+            <span className="text-[8px] opacity-60">{hintsOpen ? '▴' : '▾'}</span>
+          </button>
+          {hintsOpen && (
+            <div className="mt-2 animate-fade-up">
+              <p className="mb-2 text-center font-mono text-[9px] uppercase tracking-[0.2em] text-ink3/60">
+                点击词块可追加到输入框
+              </p>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {wordHints.map((word) => {
+                  const inputWords = text.toLowerCase().split(/\s+/).filter(Boolean);
+                  const used = inputWords.includes(word);
+                  return (
+                    <button
+                      key={word}
+                      type="button"
+                      onClick={() => !used && appendWord(word)}
+                      className={cn(
+                        'rounded border px-2.5 py-1.5 font-mono text-xs transition-all',
+                        'min-h-[2rem] touch-manipulation', // 移动端触控优化
+                        used
+                          ? 'cursor-default border-paper3 bg-paper2/60 text-ink3 opacity-40 line-through'
+                          : 'cursor-pointer border-paper3 bg-paper text-ink hover:border-persimmon hover:bg-persimmon-50 hover:text-persimmon-700 active:scale-95'
+                      )}
+                    >
+                      {word}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 揭晓后 diff 高亮 */}
       {revealed && !revealed.correct && (

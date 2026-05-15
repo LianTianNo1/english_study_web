@@ -532,7 +532,9 @@ function Footer({ onPrev, onNext, nextLabel }: { onPrev?: () => void; onNext: ()
 
 function renderHighlight(text: string, highlights?: string[]) {
   if (!highlights || highlights.length === 0) return text;
-  const pat = new RegExp(`(${highlights.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  const escaped = highlights.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  // 使用 \b 单词边界，避免把 "want" 里的 "a" 也高亮
+  const pat = new RegExp(`(\\b(?:${escaped.join('|')})\\b)`, 'gi');
   const parts = text.split(pat);
   return parts.map((p, i) =>
     highlights.some((h) => p.toLowerCase() === h.toLowerCase()) ? (
