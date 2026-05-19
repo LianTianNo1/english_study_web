@@ -71,6 +71,14 @@ export const progressRepo = {
     }
   },
 
+  /** 清空错词计数（用于"连续正确"从错题集移除） */
+  async clearWrong(wordId: number): Promise<void> {
+    const r = await this.getByWordId(wordId);
+    if (r?.id) {
+      await db.progress.update(r.id, { wrongCount: 0, lastWrongAt: undefined });
+    }
+  },
+
   async starredWords(): Promise<ProgressRecord[]> {
     return db.progress.filter((r) => r.starred === true).toArray();
   },

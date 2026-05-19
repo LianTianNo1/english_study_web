@@ -11,6 +11,9 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@react-three/postprocessing": "^2.19.1",
     "@tanstack/react-virtual": "^3.10.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -18,16 +21,19 @@
     "dexie-react-hooks": "^1.1.7",
     "lucide-react": "^0.453.0",
     "mespeak": "^2.0.2",
+    "postprocessing": "^6.39.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
     "tailwind-merge": "^2.5.4",
+    "three": "^0.169.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.169.0",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",

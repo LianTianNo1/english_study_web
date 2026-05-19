@@ -18,6 +18,7 @@ const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m
 const WeeklyReport = lazy(() => import('./pages/WeeklyReport').then((m) => ({ default: m.WeeklyReport })));
 const Listening = lazy(() => import('./pages/Listening').then((m) => ({ default: m.Listening })));
 const Phonics = lazy(() => import('./pages/Phonics').then((m) => ({ default: m.Phonics })));
+const Play = lazy(() => import('./pages/Play').then((m) => ({ default: m.Play })));
 
 function PageFallback() {
   return (
@@ -36,6 +37,12 @@ export const router = createHashRouter([
   {
     path: '/onboarding',
     element: <Onboarding />,
+  },
+  // /play 提到顶层 — 全屏沉浸，不嵌入 AppLayout（避免 main 的 animate-fade-up
+  // transform 创建 containing block 导致 fixed inset-0 失效）
+  {
+    path: '/play',
+    element: <S><Play /></S>,
   },
   {
     path: '/',

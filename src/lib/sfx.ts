@@ -70,6 +70,51 @@ export function sfxChime() {
   });
 }
 
+/** 连击音：音高随 combo 数上升（C5 + 半音步进，封顶 1 个八度） */
+export function sfxCombo(combo: number) {
+  if (!enabledRef) return;
+  const ac = getCtx();
+  if (!ac) return;
+  const now = ac.currentTime;
+  const step = Math.min(Math.max(combo - 1, 0), 12);
+  const freq = 523.25 * Math.pow(2, step / 12);
+  const osc = ac.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.14, now + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+  osc.connect(g).connect(ac.destination);
+  osc.start(now);
+  osc.stop(now + 0.2);
+}
+
+/** 通关三和弦展开 */
+export function sfxStageClear() {
+  if (!enabledRef) return;
+  const ac = getCtx();
+  if (!ac) return;
+  const now = ac.currentTime;
+  const freqs = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+  freqs.forEach((f, i) => {
+    const osc = ac.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = f;
+    const g = ac.createGain();
+    const t = now + i * 0.05;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.1, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    const filter = ac.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 2000;
+    osc.connect(filter).connect(g).connect(ac.destination);
+    osc.start(t);
+    osc.stop(t + 0.5);
+  });
+}
+
 export function sfxThud() {
   if (!enabledRef) return;
   const ac = getCtx();

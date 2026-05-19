@@ -1,6 +1,87 @@
+/* Orbitron — 仅在 /play 霓虹场景 HUD 使用，避免影响 paper 美学其他页面 */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  .font-tech {
+    font-family: 'Orbitron', 'JetBrains Mono', ui-monospace, monospace;
+    font-feature-settings: 'tnum';
+    letter-spacing: 0.02em;
+  }
+  /* 扫描线叠加 — /play HUD 顶部用 */
+  .play-scanlines {
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 229, 255, 0.04) 2px,
+      rgba(0, 229, 255, 0.04) 3px
+    );
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+  /* 通关大字白闪 */
+  @keyframes playFlashWhite {
+    0% { opacity: 0; }
+    30% { opacity: 0.55; }
+    100% { opacity: 0; }
+  }
+  /* 通关单个字母弹入 + 上飘 */
+  @keyframes playRevealLetter {
+    0% {
+      opacity: 0;
+      transform: translateY(36px) scale(0.4);
+      filter: blur(14px) drop-shadow(0 0 18px rgba(255, 215, 0, 0.55));
+    }
+    60% {
+      opacity: 1;
+      transform: translateY(-6px) scale(1.08);
+      filter: blur(0) drop-shadow(0 0 22px rgba(255, 215, 0, 0.85));
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0) drop-shadow(0 0 18px rgba(255, 215, 0, 0.55));
+    }
+  }
+  /* 通关副标题淡入 */
+  @keyframes playSubtitleIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  /* combo 边框脉冲（IV） */
+  @keyframes playEdgePulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* 四角 sci-fi 装饰边角 */
+  .play-corners::before,
+  .play-corners::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-color: currentColor;
+    border-style: solid;
+    border-width: 0;
+  }
+  .play-corners::before {
+    top: -2px;
+    left: -2px;
+    border-top-width: 2px;
+    border-left-width: 2px;
+  }
+  .play-corners::after {
+    bottom: -2px;
+    right: -2px;
+    border-bottom-width: 2px;
+    border-right-width: 2px;
+  }
+}
 
 @layer base {
   :root {
