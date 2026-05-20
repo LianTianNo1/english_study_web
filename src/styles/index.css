@@ -414,6 +414,139 @@
   animation: ghost-letter 0.4s ease-out forwards;
 }
 
+/* ============= /play2 Missile-Warning Terminal （单词陨石防御战） ============= */
+
+/* 终端等宽字 —— 整个 /play2 HUD 的统一字体 */
+.font-term {
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+  font-feature-settings: 'tnum';
+  letter-spacing: 0.04em;
+}
+
+/* 深空告警背景 */
+.mtr-bg {
+  background-color: #07060A;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(255, 176, 32, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 59, 48, 0.06) 0%, transparent 70%);
+}
+
+/* 危险斜纹（琥珀/黑 caution stripes） */
+.mtr-hazard {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #FFB020 0px, #FFB020 9px,
+    #07060A 9px, #07060A 18px
+  );
+}
+
+/* 终端面板 —— 细描边 + 内发光 */
+.mtr-panel {
+  position: relative;
+  background: rgba(14, 10, 18, 0.82);
+  border: 1px solid rgba(255, 176, 32, 0.35);
+  box-shadow: inset 0 0 24px rgba(255, 176, 32, 0.06), 0 0 18px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+/* 四角刻度框（HUD 风） */
+.mtr-corners::before,
+.mtr-corners::after {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  border: 2px solid #FFB020;
+  pointer-events: none;
+}
+.mtr-corners::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.mtr-corners::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+/* 终端按钮 */
+.mtr-btn {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  border: 1px solid #FFB020;
+  color: #FFB020;
+  background: rgba(255, 176, 32, 0.06);
+  transition: all 0.14s ease;
+}
+.mtr-btn:hover:not(:disabled) {
+  background: #FFB020;
+  color: #07060A;
+  box-shadow: 0 0 22px rgba(255, 176, 32, 0.5);
+}
+.mtr-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.mtr-btn-go {
+  border-color: #39FF6A;
+  color: #39FF6A;
+  background: rgba(57, 255, 106, 0.07);
+}
+.mtr-btn-go:hover:not(:disabled) {
+  background: #39FF6A;
+  color: #07060A;
+  box-shadow: 0 0 24px rgba(57, 255, 106, 0.55);
+}
+
+/* 扫描线（琥珀调，区别于游戏1的青色 .play-scanlines） */
+.mtr-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0px, transparent 2px,
+    rgba(255, 176, 32, 0.035) 2px, rgba(255, 176, 32, 0.035) 3px
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* 全屏受击红闪 */
+@keyframes mtrHitFlash {
+  0%   { opacity: 0; }
+  12%  { opacity: 0.62; }
+  100% { opacity: 0; }
+}
+.animate-mtr-hit { animation: mtrHitFlash 0.5s ease-out forwards; }
+
+/* 低血红色边缘脉冲 */
+@keyframes mtrAlarmPulse {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.75; }
+}
+.mtr-alarm { animation: mtrAlarmPulse 0.9s ease-in-out infinite; }
+
+/* 雷达扫描线旋转 */
+@keyframes mtrRadarSweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.mtr-radar-sweep { animation: mtrRadarSweep 2.4s linear infinite; }
+
+/* 飞字反馈上浮 */
+@keyframes mtrFloatUp {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.85); }
+  18%  { opacity: 1; transform: translateY(0) scale(1.06); }
+  72%  { opacity: 1; transform: translateY(-6px) scale(1); }
+  100% { opacity: 0; transform: translateY(-22px) scale(0.96); }
+}
+.animate-mtr-float { animation: mtrFloatUp 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; }
+
+/* WAVE 横幅扫入 */
+@keyframes mtrWaveBanner {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scaleX(0.4); filter: blur(8px); }
+  22%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1); filter: blur(0); }
+  78%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.1); filter: blur(6px); }
+}
+.animate-mtr-wave { animation: mtrWaveBanner 1.9s ease-out forwards; }
+
+/* 卡片入场错峰 */
+@keyframes mtrCardIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-mtr-card { animation: mtrCardIn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
 /* 句子模式 ripple */
 .pad-keyspark {
   position: absolute;

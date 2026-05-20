@@ -19,6 +19,7 @@ const WeeklyReport = lazy(() => import('./pages/WeeklyReport').then((m) => ({ de
 const Listening = lazy(() => import('./pages/Listening').then((m) => ({ default: m.Listening })));
 const Phonics = lazy(() => import('./pages/Phonics').then((m) => ({ default: m.Phonics })));
 const Play = lazy(() => import('./pages/Play').then((m) => ({ default: m.Play })));
+const Play2 = lazy(() => import('./pages/Play2').then((m) => ({ default: m.Play2 })));
 
 function PageFallback() {
   return (
@@ -43,6 +44,11 @@ export const router = createHashRouter([
   {
     path: '/play',
     element: <S><Play /></S>,
+  },
+  // /play2 同样顶层 — 黏土消消乐全屏
+  {
+    path: '/play2',
+    element: <S><Play2 /></S>,
   },
   {
     path: '/',

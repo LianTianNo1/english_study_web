@@ -18,6 +18,7 @@ const NAV = [
   { to: '/review', label: '复习', code: '02' },
   { to: '/listening', label: '听写', code: '02d' },
   { to: '/play', label: '游戏', code: '02g' },
+  { to: '/play2', label: '陨石', code: '02s' },
   { to: '/mistakes', label: '错题', code: '2b' },
   { to: '/grammar', label: '语法', code: '03' },
   { to: '/phonics', label: '音标', code: '03p' },
