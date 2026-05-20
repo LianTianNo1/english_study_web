@@ -132,6 +132,7 @@ src/
 │   ├── GrammarLesson.tsx           单节语法课（场景→例句→规律→练习）
 │   ├── Phonics.tsx                 音标学习（浏览模式 + 练习模式）        ← [新增 2026-05]
 │   ├── Play.tsx                    3D 拼写积木塔游戏（独立路由 /play）   ← [新增 2026-05-19]
+│   ├── Play2.tsx                   单词陨石防御战（独立路由 /play2）      ← [新增 2026-05-20]
 │   ├── Library.tsx                 词库浏览
 │   ├── Listening.tsx               听写专项（The Ear Test）
 │   ├── Mistakes.tsx                错题本 / 难词收藏
@@ -158,6 +159,19 @@ src/
 │   │   ├── useShake.ts             相机屏震 hook + 单例 api
 │   │   ├── Particles.tsx           粒子爆裂模块级 store + 共享 SphereGeometry
 │   │   ├── stageBuilder.ts         关卡生成（按 mode 取词 + 干扰字母 + 1/3 概率黄金字母）
+│   │   └── types.ts
+│   ├── play-meteor/                单词陨石防御战引擎（R3F，无物理库）   ← [新增 2026-05-20]
+│   │   ├── MeteorScene.tsx         R3F Canvas 根（深空黑/Bloom/ChromaticAberration/雾化/Sparkles/地网）
+│   │   ├── Meteor.tsx              单颗陨石（低面 Icosahedron + 逐字母单词 Billboard + 锁定绿准星）
+│   │   ├── Base.tsx                玩家基地（发光穹顶 + 六边停机坪 + 受击红闪）
+│   │   ├── Laser.tsx               激光射线（模块级 store，基地→陨石短生命光束）
+│   │   ├── Radar.tsx               右下角雷达扫描仪（签名元素：陨石光点 + 旋转扫描线）
+│   │   ├── HUD3.tsx                终端风 HUD（SCORE/COMBO/WAVE/基地完整度/锁定单词读数/雷达/飞字）
+│   │   ├── MeteorModePicker.tsx    终端风 MISSION SELECT 入口（复习/错题/新学）
+│   │   ├── ResultPanel3.tsx        胜利/失败结算 + S~D 评级
+│   │   ├── useMeteorSession.ts     useReducer 状态机（meteors/lockedId/baseHp/score/combo/results）
+│   │   ├── meteorEngine.ts         纯函数（难度曲线/坐标映射/锁定选择/计分/评级）
+│   │   ├── wordSource.ts           取词（复用 review/mistakes/new 三分支）
 │   │   └── types.ts
 │   └── srs/                        间隔重复算法
 │       ├── sm2.ts                  SM-2 算法
@@ -189,7 +203,8 @@ src/
 │   ├── sfx.ts                      音效管理（chime / thud / tick）
 │   ├── diff.ts                     字符差分对比（答题错误时高亮）
 │   ├── customImport.ts             自定义词库导入
-│   ├── play-srs.ts                 游戏关卡→SRS 回写适配器              ← [新增 2026-05-19]
+│   ├── play-srs.ts                 拼字游戏关卡→SRS 回写适配器          ← [新增 2026-05-19]
+│   ├── play-meteor-srs.ts          陨石游戏单词→SRS 回写适配器          ← [新增 2026-05-20]
 │   ├── utils.ts                    通用工具（cn / shuffle 等）
 │   └── useMediaQuery.ts            响应式媒体查询 Hook
 │
@@ -222,7 +237,8 @@ src/
 | `/mistakes` | `Mistakes` | 移动 More 抽屉 / 桌面 Primary[4] |
 | `/grammar` | `Grammar` | 移动 More 抽屉 / 桌面 Primary[5] |
 | `/phonics` | `Phonics` | 移动 More 抽屉 / 桌面 Secondary |
-| `/play` | `Play` | 移动 More 抽屉 / 桌面 Primary[4]（3D 游戏，**独立顶层路由，全屏不在 AppLayout 内**） |
+| `/play` | `Play` | 移动 More 抽屉 / 桌面导航（3D 拼字游戏，**独立顶层路由，全屏不在 AppLayout 内**） |
+| `/play2` | `Play2` | 移动 More 抽屉 / 桌面导航（单词陨石防御战，**独立顶层路由，全屏不在 AppLayout 内**） |
 | `/library` | `Library` | 移动 More 抽屉 / 桌面 Secondary |
 | `/stats` | `Stats` | 移动 More 抽屉 / 桌面 Secondary |
 | `/weekly` | `WeeklyReport` | 移动 More 抽屉 / 桌面 Secondary |
@@ -401,6 +417,33 @@ src/
 - 桌面：dpr `[1, 2]` + 全后处理 + 反射地面 1024 分辨率 + Sparkles 80 颗
 - 退出层次：HUD ← exit → ModePicker；ModePicker ← exit → 首页（两层退出）
 
+### 10. 单词陨石防御战（Play2）— 深空告警台 ← 新增 2026-05-20
+
+独立路由 `/play2`，**全屏覆盖**（fixed inset-0 z-50），ZType 打字街机的 3D 单词版。技术栈：**@react-three/fiber + @react-three/drei + @react-three/postprocessing**（无物理库）。
+
+#### 10.1 视觉方向
+「Missile-Warning Terminal 深空告警台」军用雷达美学，与游戏1（冷调赛博霓虹/Orbitron）明确区分：
+- 配色：深空黑 `#07060A` + 危险琥珀 `#FFB020`（威胁/单词）+ 警报红 `#FF3B30`（伤害/濒危）+ 雷达绿 `#39FF6A`（武器/已打字母）
+- 字体：全 HUD 用 JetBrains Mono（class `.font-term`）—— 终端读数美学
+- 样式类：`src/styles/index.css` 的 `.mtr-*` 段（mtr-bg/panel/corners/btn/hazard/scanlines/radar-sweep 等）
+
+#### 10.2 玩法
+- 单词陨石从深空飞向底部「基地」，正面贴发光英文单词。
+- 键盘打字：输入字母自动锁定「下一待打字母 == 该字母」且最逼近的陨石（弹中文释义 + TTS）；逐字母打对 → 基地射绿激光 + 字母点亮；整词打完 → 陨石爆炸。
+- 打错 → 红闪 + combo 归零 + errors++（不解锁）。陨石撞基地 → 全屏红闪 + 屏震 + 基地 -1 血。
+- 一 session 取 24 词；难度曲线 `difficultyAt(destroyed)`：同屏 2→5、生成间隔 3.2s→1.4s、速度递增；每 8 词一个 WAVE 横幅。
+- 24 词全击毁 → 胜利；基地血量（5）耗尽 → 失败。
+- 移动端降级：点击陨石 = 锁定 + 推进一字母。
+
+#### 10.3 计分 & SRS
+- 字母 `+10×(combo+1)`；整词 `+wordLen×50×combo×(1+speedBonus)`；评级 S/A/B/C/D。
+- `lib/play-meteor-srs.ts` 即时回写：漏失=quality 0 / 0错=5 / 1错=4 / ≥2错=3；0错击毁联动清错题。
+
+#### 10.4 关键技术
+- 陨石位置纯数据驱动：state 存 `z`(深度)`x`(横向)，`setInterval` ~33ms 驱动 `TICK`，3D 组件读 state + lerp 平滑。
+- **离线优先**：禁用 drei `<Environment>` HDR 与外部字体（旧版踩坑），纯本地光 + drei 默认 3D 字体。
+- 复用游戏1基础设施：`Particles.spawnBurst`、`useShake`、postprocessing 美学；自带 `Laser` 模块级 store。
+
 ---
 
 ## 数据库表（Dexie IndexedDB）
@@ -503,6 +546,26 @@ refactor(grammar): 重构题型渲染引擎
 - `src/router.tsx` — 懒加载路由 `/phonics`
 - `src/components/AppLayout.tsx` — NAV 数组插入 `{ to: '/phonics', label: '音标', code: '03p' }`（自动落入移动端 More 抽屉和桌面端 Secondary 下拉）
 
+### 2026-05-20
+**feat(play2): 单词陨石防御战 —— 替换失败的消消乐**
+
+第二款 3D 游戏。先前的「黏土消消乐」节奏慢、反馈弱、张力不足，整体废弃重做为 ZType 风格的打字街机：键盘狂敲摧毁来袭的单词陨石，保卫基地。
+
+删除：旧 `src/features/play2-match/`（11 文件）、`src/data/common-words-3k.ts`、`src/lib/play2-srs.ts`、`.clay-*` 样式、旧 spec。
+
+新增文件：
+- `src/features/play-meteor/` — types / meteorEngine（纯函数）/ wordSource / useMeteorSession（reducer）/ MeteorScene / Meteor / Base / Laser / Radar / HUD3 / ResultPanel3 / MeteorModePicker
+- `src/lib/play-meteor-srs.ts` — 单词→SRS 回写
+- `src/pages/Play2.tsx` — 重写为陨石游戏入口（TICK 循环 + 键盘 + 副作用编排）
+- `docs/superpowers/specs/2026-05-20-play2-word-meteor-design.md` — 设计文档
+
+修改文件：
+- `src/styles/index.css` — `.clay-*` 段替换为 `.mtr-*`（深空告警台终端样式）+ `.font-term`
+- `src/components/AppLayout.tsx` — NAV 项 `/play2` label 改「陨石」、code `02s`
+- `src/router.tsx` — `/play2` 路由不变（Play2 组件重写）
+
+视觉：军用「深空告警台」美学（琥珀/警报红/雷达绿 + JetBrains Mono 终端字体 + 右下角雷达扫描仪），与游戏1 冷调赛博霓虹明确区分。复用游戏1 的粒子/屏震/后处理/取词/SRS 基础设施，无新依赖。Play2 chunk 31.8KB（gzip 11KB）。
+
 ### 2026-05-19 (v4.2)
 **feat(play): 实时关卡级 SRS 联动 + HINT 影响评分**
 
@@ -590,4 +653,4 @@ v1 体验差（相机角度错乱、配色阴暗、无反馈、3D 拖拽精度�
 
 ---
 
-*本文档由 AI 维护，每次功能变更后自动更新。最后更新：2026-05-19 (v4 全屏沉浸)*
+*本文档由 AI 维护，每次功能变更后自动更新。最后更新：2026-05-20 (Play2 单词陨石防御战)*
