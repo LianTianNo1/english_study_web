@@ -43,7 +43,7 @@ export function Grammar() {
         </h1>
         <p className="mt-4 max-w-2xl text-pretty text-ink2">
           25 节循序渐进的语法关卡，从 be 动词到从句。<b>不是堆术语，</b>而是让你
-          先看例句、再猜规律，最后才点明公式。每节通关 ≥ 4/5 解锁下一节。
+          先看例句、再猜规律，最后才点明公式。每节至少 8 道基础题，错题订正后再解锁下一节。
         </p>
         <div className="mt-6 flex items-baseline gap-4">
           <div className="flex-1 meter-track !h-2">
@@ -81,10 +81,13 @@ export function Grammar() {
               <div>
                 <div className="font-display text-lg font-bold text-ink">{l.title}</div>
                 <div className="mt-0.5 text-xs text-ink3">{l.subtitle}</div>
+                <div className="mt-2 font-mono text-[10px] uppercase tracking-wider text-ink3">
+                  {l.examples.length} 例句 · {l.exercises.length} 基础题 · {l.advancedExercises?.length ?? 0} 进阶题
+                </div>
               </div>
               {progress[l.id]?.status === 'completed' && (
                 <div className="font-mono text-[10px] uppercase tracking-wider text-moss-700">
-                  score · {progress[l.id].score}/{l.exercises.length}
+                  首轮得分 · {progress[l.id].score}/{l.exercises.length}
                 </div>
               )}
             </Link>

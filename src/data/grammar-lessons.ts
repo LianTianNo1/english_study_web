@@ -1,6 +1,7 @@
 /**
  * 0 基础语法路径 · 25 节种子课程
  * 每节课包含：场景导入 → 5 例句 → 猜规律 → 揭晓公式 → 5 题练习
+ * 当前课程在原结构上补充到 5-9 个例句、至少 8 道基础题，并提供进阶应用。
  */
 
 export interface GrammarExample {
@@ -55,7 +56,7 @@ export interface GrammarLesson {
   relatedLessons?: string[];
 }
 
-export const GRAMMAR_LESSONS: GrammarLesson[] = [
+const BASE_GRAMMAR_LESSONS: GrammarLesson[] = [
   {
     id: 'l01-be-verb',
     index: 1,
@@ -1244,3 +1245,97 @@ export const GRAMMAR_LESSONS: GrammarLesson[] = [
     relatedLessons: ['l10-present-perfect', 'l24-relative'],
   },
 ];
+
+const ZERO_BASE_REINFORCEMENT: Partial<Record<string, GrammarExercise[]>> = {
+  'l09-future': [
+    { type: 'choice', question: 'Look at the dark clouds. It ___ rain.', options: ['is going to', 'will to', 'is'], answer: 'is going to', explain: '眼前已有乌云这个迹象，用 be going to 表示很可能发生。' },
+    { type: 'fillblank', question: 'We ___ visit Grandma tomorrow.（填 will）', answer: 'will', explain: 'will 后直接接动词原形 visit。' },
+    { type: 'correction', question: '找错：She will goes to school tomorrow.', answer: 'She will go to school tomorrow', explain: 'will 后的动词必须用原形 go。' },
+  ],
+  'l10-present-perfect': [
+    { type: 'choice', question: 'He ___ just finished his homework.', options: ['has', 'have', 'is'], answer: 'has', explain: '主语 He 是第三人称单数，现在完成时用 has + 过去分词。' },
+    { type: 'fillblank', question: 'I ___ never seen snow.（填 have / has）', answer: 'have', explain: '主语 I 搭配 have，seen 是 see 的过去分词。' },
+    { type: 'correction', question: '找错：She has went home.', answer: 'She has gone home', explain: 'go 的过去分词是 gone，不是过去式 went。' },
+  ],
+  'l11-aux-do': [
+    { type: 'choice', question: '___ your brother like music?', options: ['Does', 'Do', 'Is'], answer: 'Does', explain: '主语 your brother 是第三人称单数，一般现在时提问用 Does。' },
+    { type: 'fillblank', question: 'They ___ not watch TV yesterday.（填 did）', answer: 'did', explain: 'yesterday 表示过去，否定句用 did not + 动词原形。' },
+    { type: 'correction', question: '找错：Does she likes coffee?', answer: 'Does she like coffee?', explain: 'Does 已经表示第三人称单数，后面的动词回到原形 like。' },
+  ],
+  'l12-modals': [
+    { type: 'choice', question: 'You ___ wear a seat belt.', options: ['must', 'must to', 'musts'], answer: 'must', explain: 'must 后直接接动词原形，不加 to，也不随主语变化。' },
+    { type: 'fillblank', question: 'She can ___ very fast.（填 run）', answer: 'run', explain: '情态动词 can 后用动词原形 run。' },
+    { type: 'correction', question: '找错：He can swims well.', answer: 'He can swim well', explain: 'can 后的动词不能加 -s，必须用原形 swim。' },
+  ],
+  'l13-adj-adv': [
+    { type: 'choice', question: 'The baby is sleeping ___.', options: ['quietly', 'quiet', 'quieter'], answer: 'quietly', explain: '修饰动作 sleeping 要用副词 quietly。' },
+    { type: 'fillblank', question: 'This is a ___ book.（填 interesting）', answer: 'interesting', explain: '修饰名词 book 要用形容词 interesting。' },
+    { type: 'correction', question: '找错：She sings beautiful.', answer: 'She sings beautifully', explain: '修饰动词 sings 要用副词 beautifully。' },
+  ],
+  'l14-comparative': [
+    { type: 'choice', question: 'This bag is ___ than that one.', options: ['cheaper', 'cheapest', 'cheap'], answer: 'cheaper', explain: '句中有 than，要用比较级 cheaper。' },
+    { type: 'fillblank', question: 'Tom is the ___ boy in his class.（填 tallest）', answer: 'tallest', explain: '有 the 和范围 in his class，要用最高级 tallest。' },
+    { type: 'correction', question: '找错：My car is more faster than yours.', answer: 'My car is faster than yours', explain: 'faster 已经是比较级，前面不能再加 more。' },
+  ],
+  'l15-prep': [
+    { type: 'choice', question: 'The meeting starts ___ 9:00.', options: ['at', 'on', 'in'], answer: 'at', explain: '具体时刻 9:00 前用 at。' },
+    { type: 'fillblank', question: 'We have English ___ Monday.（填 on）', answer: 'on', explain: '具体星期前用 on。' },
+    { type: 'correction', question: '找错：My birthday is in May 2nd.', answer: 'My birthday is on May 2nd', explain: '具体日期 May 2nd 前用 on。' },
+  ],
+  'l16-there-be': [
+    { type: 'choice', question: 'There ___ two apples on the table.', options: ['are', 'is', 'has'], answer: 'are', explain: 'two apples 是复数，there be 句型用 are。' },
+    { type: 'fillblank', question: 'There ___ some water in the glass.（填 is）', answer: 'is', explain: 'water 是不可数名词，there be 句型用 is。' },
+    { type: 'correction', question: '找错：There are a book on the desk.', answer: 'There is a book on the desk', explain: 'a book 是单数，be 动词用 is。' },
+  ],
+  'l17-questions': [
+    { type: 'choice', question: '___ did you go yesterday?', options: ['Where', 'Do', 'Are'], answer: 'Where', explain: '询问地点用 Where，后面接一般疑问结构 did you go。' },
+    { type: 'fillblank', question: '___ she a teacher?（填 Is）', answer: 'Is', explain: '含 be 动词的陈述句变一般疑问句时，把 Is 提到主语前。' },
+    { type: 'correction', question: '找错：Where you live?', answer: 'Where do you live?', explain: '一般现在时的特殊疑问句需要 do + 主语 + 动词原形。' },
+  ],
+  'l18-negation': [
+    { type: 'choice', question: 'He ___ like spicy food.', options: ["doesn't", "don't", 'is not'], answer: "doesn't", explain: '主语 He 的一般现在时否定用 does not。' },
+    { type: 'fillblank', question: 'They ___ not at home.（填 are）', answer: 'are', explain: 'be 动词否定直接在 are 后加 not。' },
+    { type: 'correction', question: "找错：She doesn't likes tea.", answer: "She doesn't like tea", explain: "doesn't 后面的动词回到原形 like。" },
+  ],
+  'l19-imperative': [
+    { type: 'choice', question: '___ the window, please.', options: ['Open', 'Opens', 'Opening'], answer: 'Open', explain: '肯定祈使句直接用动词原形开头。' },
+    { type: 'fillblank', question: "___ be late again.（填 Don't）", answer: "Don't", explain: "否定祈使句用 Don't + 动词原形。" },
+    { type: 'correction', question: '找错：Please to sit down.', answer: 'Please sit down', explain: '祈使句用动词原形 sit，不加 to。' },
+  ],
+  'l20-conjunctions': [
+    { type: 'choice', question: 'I was tired, ___ I finished the work.', options: ['but', 'and', 'or'], answer: 'but', explain: '前后意思形成转折，用 but。' },
+    { type: 'fillblank', question: 'Would you like tea ___ coffee?（填 or）', answer: 'or', explain: '在两个选项中选择，用 or。' },
+    { type: 'correction', question: '找错：Do you want tea but coffee?', answer: 'Do you want tea or coffee?', explain: '在两个选项中选择要用 or，不能用表示转折的 but。' },
+  ],
+  'l21-when': [
+    { type: 'choice', question: 'I will call you when I ___ home.', options: ['get', 'will get', 'got'], answer: 'get', explain: '时间状语从句遵循主将从现，when 后用一般现在时。' },
+    { type: 'fillblank', question: 'Please wash your hands before you ___.（填 eat）', answer: 'eat', explain: 'before 引导的时间从句用一般现在时表达将来。' },
+    { type: 'correction', question: '找错：After she will arrive, we will eat.', answer: 'After she arrives, we will eat', explain: 'after 从句不用 will，主语 she 的一般现在时用 arrives。' },
+  ],
+  'l22-object-clause': [
+    { type: 'choice', question: 'I know ___ she is busy.', options: ['that', 'what', 'do'], answer: 'that', explain: '陈述内容作宾语从句时可用 that 引导。' },
+    { type: 'fillblank', question: 'I wonder ___ he will come.（填 if）', answer: 'if', explain: '把“他会不会来”作为宾语时，用 if 或 whether 引导。' },
+    { type: 'correction', question: '找错：Can you tell me where does he live?', answer: 'Can you tell me where he lives?', explain: '宾语从句使用陈述语序 where he lives，不能倒装。' },
+  ],
+  'l23-if': [
+    { type: 'choice', question: 'If it ___ tomorrow, we will stay home.', options: ['rains', 'will rain', 'rained'], answer: 'rains', explain: '真实条件句遵循主将从现，if 从句用一般现在时。' },
+    { type: 'fillblank', question: 'If you study hard, you ___ pass.（填 will）', answer: 'will', explain: '主句表示将来的结果，用 will + 动词原形。' },
+    { type: 'correction', question: '找错：If she will call, I will tell you.', answer: 'If she calls, I will tell you', explain: 'if 从句不用 will，主语 she 的一般现在时用 calls。' },
+  ],
+  'l24-relative': [
+    { type: 'choice', question: 'The woman ___ lives next door is a doctor.', options: ['who', 'which', 'where'], answer: 'who', explain: '先行词 The woman 是人，用 who。' },
+    { type: 'fillblank', question: 'This is the book ___ I bought yesterday.（填 that）', answer: 'that', explain: '先行词 the book 是物，可以用 that 引导定语从句。' },
+    { type: 'correction', question: '找错：The boy which is running is my brother.', answer: 'The boy who is running is my brother', explain: '先行词 The boy 是人，用 who，不用 which。' },
+  ],
+  'l25-review': [
+    { type: 'choice', question: 'She ___ studying English now.', options: ['is', 'does', 'has'], answer: 'is', explain: 'now 表示正在发生，用 is + 动词-ing。' },
+    { type: 'fillblank', question: 'Yesterday we ___ to the park.（填 went）', answer: 'went', explain: 'yesterday 表示过去，go 要用过去式 went。' },
+    { type: 'correction', question: '找错：If it will rain, we will stay home.', answer: 'If it rains, we will stay home', explain: '真实条件句的 if 从句用一般现在时，主句才用 will。' },
+  ],
+};
+
+// 第 9 节起原基础题只有 5 道，这里统一补到 8 道，并按“识别 → 填空 → 纠错”降低零基础输出跨度。
+export const GRAMMAR_LESSONS: GrammarLesson[] = BASE_GRAMMAR_LESSONS.map((lesson) => ({
+  ...lesson,
+  exercises: [...lesson.exercises, ...(ZERO_BASE_REINFORCEMENT[lesson.id] ?? [])],
+}));

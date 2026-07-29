@@ -12,3 +12,4 @@ dist-ssr
 public/data
 .vite-dev.log
 .superpowers
+.playwright-mcp

@@ -7,6 +7,7 @@ import { AnswerInput } from '@/components/AnswerInput';
 interface Props {
   exercise: GrammarExercise;
   revealed: { value: string; correct: boolean } | null;
+  fallbackExplain?: string;
   onSubmit: (value: string, correct: boolean) => void;
 }
 
@@ -18,23 +19,23 @@ function check(answer: string, correct: string) {
   return normalize(answer) === normalize(correct);
 }
 
-export function ExerciseRenderer({ exercise, revealed, onSubmit }: Props) {
+export function ExerciseRenderer({ exercise, revealed, fallbackExplain, onSubmit }: Props) {
   switch (exercise.type) {
     case 'choice':
-      return <ChoiceView exercise={exercise} revealed={revealed} onSubmit={onSubmit} />;
+      return <ChoiceView exercise={exercise} revealed={revealed} onSubmit={onSubmit} fallbackExplain={fallbackExplain} />;
     case 'fillblank':
-      return <FillBlankView exercise={exercise} revealed={revealed} onSubmit={onSubmit} />;
+      return <FillBlankView exercise={exercise} revealed={revealed} onSubmit={onSubmit} fallbackExplain={fallbackExplain} />;
     case 'reorder':
-      return <ReorderView exercise={exercise} revealed={revealed} onSubmit={onSubmit} />;
+      return <ReorderView exercise={exercise} revealed={revealed} onSubmit={onSubmit} fallbackExplain={fallbackExplain} />;
     case 'translate':
-      return <TranslateView exercise={exercise} revealed={revealed} onSubmit={onSubmit} />;
+      return <TranslateView exercise={exercise} revealed={revealed} onSubmit={onSubmit} fallbackExplain={fallbackExplain} />;
     case 'correction':
-      return <CorrectionView exercise={exercise} revealed={revealed} onSubmit={onSubmit} />;
+      return <CorrectionView exercise={exercise} revealed={revealed} onSubmit={onSubmit} fallbackExplain={fallbackExplain} />;
   }
 }
 
 /* ---------- 选择题 ---------- */
-function ChoiceView({ exercise, revealed, onSubmit }: Props) {
+function ChoiceView({ exercise, revealed, fallbackExplain, onSubmit }: Props) {
   const options = exercise.options ?? [];
 
   // 键盘 1-N 选择
@@ -96,13 +97,13 @@ function ChoiceView({ exercise, revealed, onSubmit }: Props) {
           press 1–{options.length} · enter to advance
         </p>
       )}
-      <Feedback exercise={exercise} revealed={revealed} />
+      <Feedback exercise={exercise} revealed={revealed} fallbackExplain={fallbackExplain} />
     </div>
   );
 }
 
 /* ---------- 填空 ---------- */
-function FillBlankView({ exercise, revealed, onSubmit }: Props) {
+function FillBlankView({ exercise, revealed, fallbackExplain, onSubmit }: Props) {
   return (
     <div>
       <Question text={exercise.question} />
@@ -112,11 +113,7 @@ function FillBlankView({ exercise, revealed, onSubmit }: Props) {
         onSubmit={(v, ok) => onSubmit(v, ok)}
         autoFocus
       />
-      {exercise.explain && revealed && (
-        <div className="mt-3 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
-          <b className="text-ink2">解析：</b>{exercise.explain}
-        </div>
-      )}
+      <Explanation exercise={exercise} revealed={revealed} fallbackExplain={fallbackExplain} />
     </div>
   );
 }
@@ -124,7 +121,7 @@ function FillBlankView({ exercise, revealed, onSubmit }: Props) {
 /* ---------- 语序重排：点选 + 拖拽（pool ↔ picked 双向 / picked 内重排序）---------- */
 type DragSource = { area: 'pool' | 'picked'; index: number } | null;
 
-function ReorderView({ exercise, revealed, onSubmit }: Props) {
+function ReorderView({ exercise, revealed, fallbackExplain, onSubmit }: Props) {
   const tokens = exercise.options ?? [];
   const [pool, setPool] = useState<string[]>(() => shuffle(tokens.slice()));
   const [picked, setPicked] = useState<string[]>([]);
@@ -338,13 +335,13 @@ function ReorderView({ exercise, revealed, onSubmit }: Props) {
           ↵ submit · ⌫ undo · 1-9 pick · drag to reorder
         </p>
       )}
-      <Feedback exercise={exercise} revealed={revealed} />
+      <Feedback exercise={exercise} revealed={revealed} fallbackExplain={fallbackExplain} />
     </div>
   );
 }
 
 /* ---------- 中→英翻译 ---------- */
-function TranslateView({ exercise, revealed, onSubmit }: Props) {
+function TranslateView({ exercise, revealed, fallbackExplain, onSubmit }: Props) {
   return (
     <div>
       <Question text={exercise.question} />
@@ -357,17 +354,13 @@ function TranslateView({ exercise, revealed, onSubmit }: Props) {
         onSubmit={(v, ok) => onSubmit(v, ok)}
         autoFocus
       />
-      {exercise.explain && revealed && (
-        <div className="mt-3 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
-          <b className="text-ink2">解析：</b>{exercise.explain}
-        </div>
-      )}
+      <Explanation exercise={exercise} revealed={revealed} fallbackExplain={fallbackExplain} />
     </div>
   );
 }
 
 /* ---------- 改错 ---------- */
-function CorrectionView({ exercise, revealed, onSubmit }: Props) {
+function CorrectionView({ exercise, revealed, fallbackExplain, onSubmit }: Props) {
   return (
     <div>
       <Question text="找出并改正错误（修改后输入完整正确句子）：" />
@@ -382,11 +375,7 @@ function CorrectionView({ exercise, revealed, onSubmit }: Props) {
         onSubmit={(v, ok) => onSubmit(v, ok)}
         autoFocus
       />
-      {exercise.explain && revealed && (
-        <div className="mt-3 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
-          <b className="text-ink2">解析：</b>{exercise.explain}
-        </div>
-      )}
+      <Explanation exercise={exercise} revealed={revealed} fallbackExplain={fallbackExplain} />
     </div>
   );
 }
@@ -400,8 +389,10 @@ function Question({ text }: { text: string }) {
   return <div className="mb-4 whitespace-pre-line text-lg font-medium text-ink">{text}</div>;
 }
 
-function Feedback({ exercise, revealed }: { exercise: GrammarExercise; revealed: Props['revealed'] }) {
+function Feedback({ exercise, revealed, fallbackExplain }: Pick<Props, 'exercise' | 'revealed' | 'fallbackExplain'>) {
   if (!revealed) return null;
+  // 旧题缺少独立解析时回退到本节核心规则，保证零基础学习者答完后总能看到原因。
+  const explanation = exercise.explain ?? fallbackExplain;
   return (
     <div
       className={cn(
@@ -413,9 +404,20 @@ function Feedback({ exercise, revealed }: { exercise: GrammarExercise; revealed:
         {revealed.correct ? '✓ 正确！' : '✗ '}
         {!revealed.correct && <span>正确答案：{exercise.answer}</span>}
       </div>
-      {exercise.explain && (
-        <div className="mt-1 text-xs opacity-80">解析：{exercise.explain}</div>
+      {explanation && (
+        <div className="mt-1 text-xs opacity-80">解析：{explanation}</div>
       )}
+    </div>
+  );
+}
+
+function Explanation({ exercise, revealed, fallbackExplain }: Pick<Props, 'exercise' | 'revealed' | 'fallbackExplain'>) {
+  if (!revealed) return null;
+  const explanation = exercise.explain ?? fallbackExplain;
+  if (!explanation) return null;
+  return (
+    <div className="mt-3 rounded-md border border-paper3 bg-paper2/40 p-3 text-xs text-ink3">
+      <b className="text-ink2">解析：</b>{explanation}
     </div>
   );
 }

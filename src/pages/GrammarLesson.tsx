@@ -11,6 +11,14 @@ import { explainWrongAnswer, generateGrammarExercises } from '@/lib/ai';
 
 type Step = 'scene' | 'examples' | 'guess' | 'reveal' | 'mistakes' | 'usage' | 'exercises' | 'advanced' | 'retry' | 'done';
 
+interface LessonResult {
+  firstAttemptScore: number;
+  basicTotal: number;
+  advancedScore: number;
+  advancedTotal: number;
+  retryRounds: number;
+}
+
 export function GrammarLesson() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
@@ -29,6 +37,10 @@ export function GrammarLesson() {
   const [aiExplain, setAiExplain] = useState('');
   const [aiExplaining, setAiExplaining] = useState(false);
   const [phase, setPhase] = useState<'basic' | 'advanced' | 'retry'>('basic');
+  const [firstAttemptScore, setFirstAttemptScore] = useState<number | null>(null);
+  const [retryRounds, setRetryRounds] = useState(0);
+  const [result, setResult] = useState<LessonResult | null>(null);
+  const lessonStartedAt = useRef(Date.now());
 
   useEffect(() => {
     if (!lesson) return;
@@ -42,6 +54,10 @@ export function GrammarLesson() {
     setAiError('');
     setAiExplain('');
     setPhase('basic');
+    setFirstAttemptScore(null);
+    setRetryRounds(0);
+    setResult(null);
+    lessonStartedAt.current = Date.now();
   }, [lessonId]);
 
   if (!lesson) {
@@ -56,11 +72,24 @@ export function GrammarLesson() {
   const correctCount = Object.values(answers).filter((a) => a.correct).length;
   const passingScore = Math.ceil(exercises.length * 0.8);
 
-  async function complete(finalScore: number) {
+  async function complete(finalScore: number, advancedScore = 0) {
+    // 只有基础错题全部订正后才会走到这里，避免零基础学习者带着知识漏洞继续下一节。
     await grammarRepo.complete(lesson!.id, finalScore);
     const next = GRAMMAR_LESSONS.find((l) => l.index === lesson!.index + 1);
     if (next) await grammarRepo.unlock(next.id);
-    await sessionsRepo.log({ type: 'grammar', wordsCount: 1, correctCount: finalScore, durationMs: 0 });
+    await sessionsRepo.log({
+      type: 'grammar',
+      wordsCount: 1,
+      correctCount: finalScore,
+      durationMs: Date.now() - lessonStartedAt.current,
+    });
+    setResult({
+      firstAttemptScore: finalScore,
+      basicTotal: exercises.length,
+      advancedScore,
+      advancedTotal: advExercises.length,
+      retryRounds,
+    });
     setStep('done');
   }
 
@@ -84,13 +113,16 @@ export function GrammarLesson() {
         .map((ex, i) => ({ ex, a: answers[i] }))
         .filter((x) => x.a && !x.a.correct)
         .map((x) => x.ex);
+      setFirstAttemptScore(correctCount);
       // 基础没通过 → 进入"错题回练"
-      if (correctCount < passingScore && wrong.length > 0) {
+      // 基础题无论是否达到 80%，答错的知识点都必须再做对一次才算掌握。
+      if (wrong.length > 0) {
         setRetryExercises(wrong);
         setExIdx(0);
         setAnswers({});
         setPhase('retry');
         setStep('retry');
+        setRetryRounds(1);
         return;
       }
       // 基础通过 → 是否有进阶题
@@ -103,8 +135,20 @@ export function GrammarLesson() {
       }
       complete(correctCount);
     } else if (phase === 'advanced') {
-      complete(correctCount);
+      complete(firstAttemptScore ?? exercises.length, correctCount);
     } else if (phase === 'retry') {
+      const wrong = retryExercises
+        .map((ex, i) => ({ ex, answer: answers[i] }))
+        .filter((item) => item.answer && !item.answer.correct)
+        .map((item) => item.ex);
+      // 回练仍答错时只保留未掌握题继续练，不能直接完成或解锁下一节。
+      if (wrong.length > 0) {
+        setRetryExercises(wrong);
+        setExIdx(0);
+        setAnswers({});
+        setRetryRounds((round) => round + 1);
+        return;
+      }
       // 回练完成，进入完成或进阶
       if (advExercises.length > 0) {
         setExIdx(0);
@@ -112,7 +156,7 @@ export function GrammarLesson() {
         setPhase('advanced');
         setStep('advanced');
       } else {
-        complete(correctCount);
+        complete(firstAttemptScore ?? exercises.length);
       }
     }
   }
@@ -164,20 +208,24 @@ export function GrammarLesson() {
       if (e.repeat || !armed) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      const stages = stagesOrder(lesson!);
+      const stages = stagesOrder(lesson!, retryRounds > 0);
       const curI = stages.indexOf(step);
+      const isExerciseStep = step === 'exercises' || step === 'advanced' || step === 'retry';
       if (e.key === 'Enter') {
-        if ((step === 'exercises' || step === 'advanced' || step === 'retry') && revealed) {
+        // 练习阶段必须先提交答案，不能用 Enter 或方向键跳过题目与掌握门槛。
+        if (isExerciseStep) {
           e.preventDefault();
-          nextEx();
-        } else if (curI >= 0 && curI < stages.length - 1) {
+          if (revealed) nextEx();
+          return;
+        }
+        if (curI >= 0 && curI < stages.length - 1) {
           e.preventDefault();
           setStep(stages[curI + 1]);
         }
-      } else if (e.key === 'ArrowLeft' && curI > 0) {
+      } else if (!isExerciseStep && e.key === 'ArrowLeft' && curI > 0) {
         e.preventDefault();
         setStep(stages[curI - 1]);
-      } else if (e.key === 'ArrowRight' && curI >= 0 && curI < stages.length - 1) {
+      } else if (!isExerciseStep && e.key === 'ArrowRight' && curI >= 0 && curI < stages.length - 1) {
         e.preventDefault();
         setStep(stages[curI + 1]);
       }
@@ -187,9 +235,9 @@ export function GrammarLesson() {
       clearTimeout(armTimer);
       window.removeEventListener('keydown', onKey);
     };
-  }, [step, revealed, lesson, exIdx, activeExercises.length]);
+  }, [step, revealed, lesson, exIdx, activeExercises.length, retryRounds]);
 
-  const stages = stagesOrder(lesson);
+  const stages = stagesOrder(lesson, retryRounds > 0);
   const stageIdx = stages.indexOf(step);
 
   return (
@@ -326,9 +374,15 @@ export function GrammarLesson() {
         <div className="paper-card animate-fade-up">
           <div className="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-ink3">
             <span>{phaseLabel(phase)} · {exIdx + 1} / {activeExercises.length}</span>
-            <span>{TYPE_LABEL[activeExercises[exIdx].type]} {phase === 'basic' && <>· pass ≥ {passingScore}/{exercises.length}</>}</span>
+            <span>{TYPE_LABEL[activeExercises[exIdx].type]} {phase === 'basic' && <>· 首轮目标 ≥ {passingScore}/{exercises.length}</>}</span>
           </div>
-          <ExerciseRenderer key={`${phase}-${exIdx}`} exercise={activeExercises[exIdx]} revealed={revealed} onSubmit={submit} />
+          <ExerciseRenderer
+            key={`${phase}-${exIdx}`}
+            exercise={activeExercises[exIdx]}
+            revealed={revealed}
+            fallbackExplain={lesson.formula.rule}
+            onSubmit={submit}
+          />
 
           {revealed && !revealed.correct && ai.enabled && ai.apiKey && (
             <div className="mt-3">
@@ -351,7 +405,13 @@ export function GrammarLesson() {
             </button>
             {revealed && (
               <button onClick={nextEx} className="btn-accent">
-                {exIdx + 1 < activeExercises.length ? <>下一题 <ArrowRight size={16} /></> : phase === 'basic' && advExercises.length > 0 ? <>进阶题 <ArrowRight size={16} /></> : <>完成 <Trophy size={16} /></>}
+                {exIdx + 1 < activeExercises.length
+                  ? <>下一题 <ArrowRight size={16} /></>
+                  : phase === 'basic'
+                    ? <>查看结果 <ArrowRight size={16} /></>
+                    : phase === 'retry'
+                      ? <>检查掌握 <CheckCircle2 size={16} /></>
+                      : <>完成本节 <Trophy size={16} /></>}
               </button>
             )}
           </div>
@@ -373,13 +433,15 @@ export function GrammarLesson() {
 
       {step === 'done' && (
         <div className="paper-card text-center animate-fade-up">
-          <Trophy size={40} className={cn('mx-auto mb-2', correctCount >= passingScore ? 'text-persimmon' : 'text-ink3')} />
-          <h2 className="font-display text-3xl font-black">
-            {correctCount >= passingScore ? '通关成功 🎉' : '差一点，再来一次？'}
-          </h2>
-          <p className="mt-1 text-sm text-ink2">
-            得分 <b className="text-persimmon">{correctCount}</b>
-          </p>
+          <Trophy size={40} className="mx-auto mb-2 text-persimmon" />
+          <h2 className="font-display text-3xl font-black">本节已掌握</h2>
+          {result && (
+            <div className="mt-2 space-y-1 text-sm text-ink2">
+              <p>基础题首轮 <b className="text-persimmon">{result.firstAttemptScore}/{result.basicTotal}</b></p>
+              {result.retryRounds > 0 && <p className="text-moss-700">错题已完成 {result.retryRounds} 轮订正</p>}
+              {result.advancedTotal > 0 && <p>进阶题 {result.advancedScore}/{result.advancedTotal}</p>}
+            </div>
+          )}
 
           {/* 推荐相关课程 */}
           {lesson.relatedLessons && lesson.relatedLessons.length > 0 && (
@@ -408,7 +470,7 @@ export function GrammarLesson() {
             <button onClick={() => location.reload()} className="btn-ghost">
               <RotateCw size={14} /> 再做一次
             </button>
-            {GRAMMAR_LESSONS.find((l) => l.index === lesson.index + 1) && correctCount >= passingScore && (
+            {GRAMMAR_LESSONS.find((l) => l.index === lesson.index + 1) && (
               <button
                 onClick={() => navigate(`/grammar/${GRAMMAR_LESSONS.find((l) => l.index === lesson.index + 1)!.id}`)}
                 className="btn-accent"
@@ -424,11 +486,12 @@ export function GrammarLesson() {
 }
 
 /* ---------- 辅助 ---------- */
-function stagesOrder(lesson: typeof GRAMMAR_LESSONS[0]): Step[] {
+function stagesOrder(lesson: typeof GRAMMAR_LESSONS[0], includeRetry = false): Step[] {
   const list: Step[] = ['scene', 'examples', 'guess', 'reveal'];
   if (lesson.mistakes?.length) list.push('mistakes');
   if (lesson.usageNotes?.length) list.push('usage');
   list.push('exercises');
+  if (includeRetry) list.push('retry');
   if (lesson.advancedExercises?.length) list.push('advanced');
   list.push('done');
   return list;
@@ -544,4 +607,3 @@ function renderHighlight(text: string, highlights?: string[]) {
     )
   );
 }
-

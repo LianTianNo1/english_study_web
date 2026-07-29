@@ -25,7 +25,26 @@
       "mcp__plugin_playwright_playwright__browser_click",
       "mcp__plugin_playwright_playwright__browser_press_key",
       "mcp__plugin_playwright_playwright__browser_close",
-      "mcp__plugin_playwright_playwright__browser_run_code_unsafe"
+      "mcp__plugin_playwright_playwright__browser_run_code_unsafe",
+      "WebSearch",
+      "mcp__open-websearch__search",
+      "mcp__open-websearch__fetchWebContent",
+      "Skill(recallloom)",
+      "Skill(recallloom:*)",
+      "Bash(cd \"C:/Users/ZhuanZ/.claude/skills/recallloom\" && find . -maxdepth 2 -type f | sort)",
+      "Bash(python init_context.py --help)",
+      "Bash(python validate_context.py --help)",
+      "Bash(python \"C:/Users/ZhuanZ/.claude/skills/recallloom/scripts/init_context.py\" --tool-name \"Claude Code\" --date 2026-05-21 --storage-mode hidden --workspace-language zh-CN --create-daily-log --json)",
+      "Bash(python \"C:/Users/ZhuanZ/.claude/skills/recallloom/scripts/commit_context_file.py\" --file-key context_brief --source-file .recallloom/_seed_brief.md --expected-file-revision 1 --expected-workspace-revision 1 --writer-id \"Claude Code\" --json)",
+      "Bash(python \"C:/Users/ZhuanZ/.claude/skills/recallloom/scripts/commit_context_file.py\" --file-key rolling_summary --source-file .recallloom/_seed_summary.md --expected-file-revision 1 --expected-workspace-revision 2 --writer-id \"Claude Code\" --json)",
+      "Bash(python -c ' *)",
+      "Bash(python _diag.py)",
+      "Bash(rm -f .recallloom/_seed_brief.md .recallloom/_seed_summary.md \"C:/Users/ZhuanZ/.claude/skills/recallloom/scripts/_diag.py\")",
+      "Bash(python \"C:/Users/ZhuanZ/.claude/skills/recallloom/scripts/validate_context.py\" --json)",
+      "Bash(python append_daily_log_entry.py --help)",
+      "Bash(python \"C:/Users/ZhuanZ/.claude/skills/recallloom/scripts/append_daily_log_entry.py\" --date 2026-05-21 --entry-file .recallloom/_seed_entry.json --input-format json --expected-workspace-revision 3 --writer-id \"Claude Code\" --json)",
+      "Bash(python \"C:/Users/ZhuanZ/.claude/skills/recallloom/scripts/commit_context_file.py\" --file-key rolling_summary --source-file .recallloom/_rebase.md --expected-file-revision 2 --expected-workspace-revision 4 --writer-id \"Claude Code\" --json)",
+      "Bash(rm -f .recallloom/_rebase.md)"
     ]
   }
 }
